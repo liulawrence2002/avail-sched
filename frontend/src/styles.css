@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #14213d;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.85), rgba(255,255,255,0) 30%),
+    linear-gradient(135deg, #fef3c7, #ffd6a5 50%, #fdffb6);
+  font-family: "Trebuchet MS", "Avenir Next", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.theme-goblin {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(163, 230, 53, 0.25), transparent 20%),
+    radial-gradient(circle at 80% 0%, rgba(251, 191, 36, 0.28), transparent 20%),
+    linear-gradient(135deg, #fff7d6, #d9f99d 45%, #fcd34d);
+}
+
+.theme-serious {
+  background:
+    radial-gradient(circle at 0 0, rgba(255,255,255,0.85), transparent 25%),
+    linear-gradient(135deg, #f8fafc, #dbeafe 50%, #e2e8f0);
+}
+
+.mascot {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #111827;
+  color: white;
+}
+
+.input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.85rem 1rem;
+  font: inherit;
+}
