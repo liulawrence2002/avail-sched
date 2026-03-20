@@ -1,14 +1,19 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AVAILABILITY_OPTIONS, buildGrid, formatInstant } from "../utils";
 
 export default function TimeGrid({ event, selections, onChange }) {
   const columns = useMemo(() => buildGrid(event.candidateSlotsUtc, event.timezone), [event]);
   const [activeWeight, setActiveWeight] = useState(1.0);
   const [dragging, setDragging] = useState(false);
+  const selectionsRef = useRef(selections);
+  selectionsRef.current = selections;
 
-  function applyWeight(slot) {
-    onChange({ ...selections, [slot]: activeWeight });
-  }
+  const applyWeight = useCallback(
+    (slot) => {
+      onChange({ ...selectionsRef.current, [slot]: activeWeight });
+    },
+    [activeWeight, onChange],
+  );
 
   function clearAll() {
     onChange({});
@@ -24,6 +29,26 @@ export default function TimeGrid({ event, selections, onChange }) {
     });
     onChange(next);
   }
+
+  function handleTouchMove(e) {
+    if (!dragging) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const slotBtn = el?.closest("[data-slot]");
+    if (slotBtn) {
+      applyWeight(slotBtn.dataset.slot);
+    }
+  }
+
+  const gridStyle = useMemo(() => {
+    if (columns.length <= 2) {
+      return { gridTemplateColumns: `repeat(${columns.length}, 1fr)` };
+    }
+    return {
+      gridTemplateColumns: `repeat(${columns.length}, minmax(120px, 1fr))`,
+      minWidth: `${columns.length * 120}px`,
+    };
+  }, [columns.length]);
 
   return (
     <div className="space-y-4">
@@ -46,11 +71,13 @@ export default function TimeGrid({ event, selections, onChange }) {
         </button>
       </div>
       <div
-        className="overflow-x-auto rounded-[28px] border border-black/10 bg-white/70 p-3"
+        className="overflow-x-auto rounded-[28px] border border-black/10 bg-white/70 p-2 sm:p-3"
         onMouseUp={() => setDragging(false)}
         onMouseLeave={() => setDragging(false)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => setDragging(false)}
       >
-        <div className="grid min-w-[720px] gap-3" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(140px, 1fr))` }}>
+        <div className="grid gap-2 sm:gap-3" style={{ ...gridStyle, touchAction: "none" }}>
           {columns.map((column) => (
             <div key={column.date} className="space-y-2">
               <div className="sticky top-0 rounded-2xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white">{column.date}</div>
@@ -60,6 +87,7 @@ export default function TimeGrid({ event, selections, onChange }) {
                   <button
                     key={slot}
                     type="button"
+                    data-slot={slot}
                     className={`block w-full rounded-2xl border px-3 py-3 text-left text-sm ${option?.color || "bg-white"}`}
                     onMouseDown={() => {
                       setDragging(true);
@@ -67,6 +95,11 @@ export default function TimeGrid({ event, selections, onChange }) {
                     }}
                     onMouseEnter={() => dragging && applyWeight(slot)}
                     onClick={() => applyWeight(slot)}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                      applyWeight(slot);
+                    }}
                   >
                     <div className="font-semibold">{formatInstant(slot, event.timezone)}</div>
                     <div className="text-xs opacity-70">{option?.label || "No"}</div>

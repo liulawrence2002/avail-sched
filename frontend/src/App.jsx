@@ -4,6 +4,7 @@ import CreatePage from "./pages/CreatePage";
 import EventPage from "./pages/EventPage";
 import ResultsPage from "./pages/ResultsPage";
 import HostPage from "./pages/HostPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useMode } from "./useMode";
 
 export default function App() {
@@ -23,13 +24,15 @@ export default function App() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Routes>
-          <Route path="/" element={<LandingPage copy={copy} />} />
-          <Route path="/create" element={<CreatePage copy={copy} />} />
-          <Route path="/e/:publicId" element={<EventPage copy={copy} />} />
-          <Route path="/e/:publicId/results" element={<ResultsPage copy={copy} />} />
-          <Route path="/host/:hostToken" element={<HostPage copy={copy} />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<LandingPage copy={copy} />} />
+            <Route path="/create" element={<CreatePage copy={copy} />} />
+            <Route path="/e/:publicId" element={<EventPage copy={copy} />} />
+            <Route path="/e/:publicId/results" element={<ResultsPage copy={copy} />} />
+            <Route path="/host/:hostToken" element={<HostPage copy={copy} />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );

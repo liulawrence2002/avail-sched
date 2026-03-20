@@ -12,6 +12,7 @@ import com.goblin.scheduler.repo.EventRepository;
 import com.goblin.scheduler.repo.EventStatsRepository;
 import com.goblin.scheduler.repo.FinalSelectionRepository;
 import com.goblin.scheduler.repo.ParticipantRepository;
+import com.goblin.scheduler.util.TextSanitizer;
 import com.goblin.scheduler.util.TokenGenerator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -72,8 +73,8 @@ public class EventService {
             0L,
             tokenGenerator.randomPublicId(),
             tokenGenerator.randomUrlToken(),
-            request.title().trim(),
-            request.description(),
+            TextSanitizer.sanitize(request.title()),
+            TextSanitizer.sanitize(request.description()),
             request.timezone(),
             request.slotMinutes(),
             request.durationMinutes(),
@@ -111,7 +112,7 @@ public class EventService {
 
     public JoinParticipantResponse joinParticipant(String publicId, JoinParticipantRequest request) {
         Event event = requireEvent(publicId);
-        Participant participant = participantRepository.save(new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), request.displayName().trim(), Instant.now()));
+        Participant participant = participantRepository.save(new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), TextSanitizer.sanitize(request.displayName()), Instant.now()));
         return new JoinParticipantResponse(participant.token());
     }
 
