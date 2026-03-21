@@ -1,9 +1,13 @@
 export const AVAILABILITY_OPTIONS = [
-  { label: "Yes", weight: 1.0, color: "bg-emerald-400" },
-  { label: "Maybe", weight: 0.6, color: "bg-amber-300" },
-  { label: "If bribed with snacks", weight: 0.3, color: "bg-fuchsia-300" },
-  { label: "No", weight: 0.0, color: "bg-slate-200" },
+  { key: "yes", weight: 1.0, color: "bg-emerald-400" },
+  { key: "maybe", weight: 0.6, color: "bg-amber-300" },
+  { key: "bribe", weight: 0.3, color: "bg-fuchsia-300" },
+  { key: "no", weight: 0.0, color: "bg-slate-200" },
 ];
+
+export function t(template, vars) {
+  return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
+}
 
 export function formatInstant(value, timezone) {
   return new Intl.DateTimeFormat(undefined, {
@@ -28,4 +32,3 @@ export function buildGrid(candidateSlotsUtc, timezone) {
     slots,
   }));
 }
-

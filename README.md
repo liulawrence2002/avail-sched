@@ -1,5 +1,7 @@
 # Goblin Scheduler
 
+[![CI](https://github.com/liulawrence2002/avail-sched/actions/workflows/ci.yml/badge.svg)](https://github.com/liulawrence2002/avail-sched/actions/workflows/ci.yml)
+
 Free-tier-friendly group availability scheduler with a goofy toggleable UI ("Goblin Mode" vs "Serious Mode").
 
 ## Current State (MVP)
@@ -43,14 +45,15 @@ avail-sched/
 │   └── src/test/         ScoringServiceTest, SlotServiceTest
 ├── frontend/         React SPA
 │   └── src/
-│       ├── pages/        LandingPage, CreatePage, EventPage, ResultsPage, HostPage
-│       ├── components/   Card, TimeGrid (drag-to-select availability grid)
+│       ├── pages/        LandingPage, CreatePage, EventPage, ResultsPage, HostPage, NotFoundPage
+│       ├── components/   Card, TimeGrid, Footer, CopyButton, ErrorBoundary
 │       ├── api.js        Axios-free fetch client
+│       ├── analytics.js  Analytics stub (swap in Plausible/PostHog/gtag)
 │       ├── utils.js      Slot formatting, grid building
 │       ├── useMode.js    Theme toggle hook
 │       └── styles.css    Tailwind + custom theme styles
 ├── infra/
-│   ├── docker-compose.yml   Local Postgres 16
+│   ├── docker-compose.yml   Full-stack (Postgres + Backend + Frontend)
 │   └── .env.example
 └── README.md
 ```
@@ -68,6 +71,13 @@ avail-sched/
 | GET    | `/api/events/{publicId}/final`                       | None        | Get finalized slot         |
 | GET    | `/api/events/{publicId}/final.ics`                   | None        | Download ICS calendar file |
 | GET    | `/api/host/{hostToken}`                              | Host token  | Get event by host token    |
+
+## API Documentation
+
+Interactive API documentation is available via Swagger UI:
+
+- **Swagger UI:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI spec:** [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
 
 ## Database Schema
 
@@ -91,8 +101,16 @@ Five tables managed by Flyway (`V1__init.sql`):
 
 ### 1. Start Postgres
 
+Make sure Docker Desktop is running first. On Windows, if the Docker daemon is stopped, `docker compose` fails with a `//./pipe/docker_engine` error before it ever reads your service config.
+
 ```bash
 docker compose -f infra/docker-compose.yml up
+```
+
+If you want to override the default Postgres settings, copy `infra/.env.example` to `infra/.env` and run:
+
+```bash
+docker compose --env-file infra/.env -f infra/docker-compose.yml up
 ```
 
 ### 2. Run backend
@@ -119,9 +137,23 @@ npm run dev
 
 The frontend defaults to `http://localhost:8080/api`. The dev server runs at `http://localhost:5173`.
 
+## Docker (Full Stack)
+
+Run the entire stack (Postgres + Backend + Frontend) with a single command:
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+Services:
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8080
+- **Swagger UI:** http://localhost:8080/swagger-ui.html
+- **Health check:** http://localhost:8080/actuator/health
+
 ## Environment
 
-- Copy `infra/.env.example` to `infra/.env` to override local DB defaults.
+- Copy `infra/.env.example` to `infra/.env` and pass it with `--env-file infra/.env` if you want to override the local DB defaults.
 - Copy `backend/.env.example` values into your deploy platform environment.
 - Copy `frontend/.env.example` to `frontend/.env.local` for local frontend overrides.
 - `APP_BASE_URL` should point at the frontend app URL (e.g., `http://localhost:5173` locally) because the backend returns host links meant for the UI.
@@ -178,8 +210,8 @@ Two unit test classes exist:
 
 - [ ] **Integration / E2E tests** — no controller, repository, or end-to-end tests exist; only two unit tests cover `ScoringService` and `SlotService`
 - [ ] **Input sanitization** — display names and event titles are rendered as-is; add XSS protection on the frontend
-- [ ] **Error boundaries** — React app has no error boundaries; unhandled errors crash the whole page
-- [ ] **Mobile responsiveness** — the TimeGrid drag-to-select component likely needs touch event support and responsive layout tuning
+- [x] **Error boundaries** — React error boundary component wraps all routes
+- [x] **Mobile responsiveness** — TimeGrid supports touch events for drag-to-select on mobile
 - [ ] **HTTPS enforcement** — no TLS configuration or redirect-to-HTTPS logic (relies on deploy platform)
 
 ### Medium Priority
@@ -199,11 +231,11 @@ Two unit test classes exist:
 - [ ] **Bulk export** — no way to export all availability data (CSV, etc.)
 - [ ] **Event search / directory** — events are only accessible via direct link
 - [ ] **Timezone auto-detection** — create form doesn't pre-select the user's local timezone
-- [ ] **Copy-to-clipboard** — host/participant links on the create success page would benefit from a copy button
-- [ ] **CI/CD pipeline** — no GitHub Actions or other CI configuration
-- [ ] **Dockerfile for backend** — no containerized build for the Spring Boot app
+- [x] **Copy-to-clipboard** — copy buttons on share links for host and participant URLs
+- [x] **CI/CD pipeline** — GitHub Actions CI with backend tests and frontend build
+- [x] **Dockerfile for backend** — multi-stage Docker build for Spring Boot app
 - [ ] **Production logging** — no structured logging or log level configuration beyond Spring defaults
-- [ ] **Metrics / observability** — no health check endpoint, Prometheus metrics, or APM integration
+- [x] **Metrics / observability** — Spring Boot Actuator with health, info, and metrics endpoints
 
 ## Free-Tier Notes
 

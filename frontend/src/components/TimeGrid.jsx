@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AVAILABILITY_OPTIONS, buildGrid, formatInstant } from "../utils";
 
-export default function TimeGrid({ event, selections, onChange }) {
+export default function TimeGrid({ event, selections, onChange, copy }) {
   const columns = useMemo(() => buildGrid(event.candidateSlotsUtc, event.timezone), [event]);
   const [activeWeight, setActiveWeight] = useState(1.0);
   const [dragging, setDragging] = useState(false);
@@ -55,19 +55,19 @@ export default function TimeGrid({ event, selections, onChange }) {
       <div className="flex flex-wrap gap-2">
         {AVAILABILITY_OPTIONS.map((option) => (
           <button
-            key={option.label}
+            key={option.key}
             type="button"
-            className={`rounded-full border px-3 py-2 text-sm font-semibold ${activeWeight === option.weight ? "border-black bg-black text-white" : "bg-white"}`}
+            className={`btn rounded-full border px-3 py-2 text-sm font-semibold ${activeWeight === option.weight ? "border-black bg-black text-white" : "bg-white"}`}
             onClick={() => setActiveWeight(option.weight)}
           >
-            {option.label}
+            {copy.availability[option.key]}
           </button>
         ))}
-        <button type="button" className="rounded-full border px-3 py-2 text-sm" onClick={markEvenings}>
-          Mark all evenings
+        <button type="button" className="btn rounded-full border px-3 py-2 text-sm" onClick={markEvenings}>
+          {copy.grid.markEvenings}
         </button>
-        <button type="button" className="rounded-full border px-3 py-2 text-sm" onClick={clearAll}>
-          Clear
+        <button type="button" className="btn rounded-full border px-3 py-2 text-sm" onClick={clearAll}>
+          {copy.grid.clear}
         </button>
       </div>
       <div
@@ -102,7 +102,7 @@ export default function TimeGrid({ event, selections, onChange }) {
                     }}
                   >
                     <div className="font-semibold">{formatInstant(slot, event.timezone)}</div>
-                    <div className="text-xs opacity-70">{option?.label || "No"}</div>
+                    <div className="text-xs opacity-70">{option ? copy.availability[option.key] : copy.availability.no}</div>
                   </button>
                 );
               })}

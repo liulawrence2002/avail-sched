@@ -28,6 +28,14 @@ public class AppConfig {
                     .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
                     .allowedMethods("GET", "POST", "PUT", "OPTIONS")
                     .allowedHeaders("*");
+                registry.addMapping("/actuator/**")
+                    .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
+                    .allowedMethods("GET")
+                    .allowedHeaders("*");
+                registry.addMapping("/swagger-ui/**")
+                    .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
+                    .allowedMethods("GET")
+                    .allowedHeaders("*");
             }
         };
     }
