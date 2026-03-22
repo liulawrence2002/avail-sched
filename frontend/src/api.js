@@ -29,6 +29,7 @@ export const api = {
   createEvent: (payload) => request("/events", { method: "POST", body: JSON.stringify(payload) }),
   getEvent: (publicId) => request(`/events/${publicId}`),
   joinEvent: (publicId, payload) => request(`/events/${publicId}/participants`, { method: "POST", body: JSON.stringify(payload) }),
+  getParticipantAvailability: (publicId, token) => request(`/events/${publicId}/participants/${token}/availability`),
   saveAvailability: (publicId, token, payload) =>
     request(`/events/${publicId}/participants/${token}/availability`, { method: "PUT", body: JSON.stringify(payload) }),
   getResults: (publicId) => request(`/events/${publicId}/results`),

@@ -138,8 +138,24 @@ class EventServiceTest {
 
         assertEquals("pub123", response.publicId());
         assertEquals(10, response.stats().viewCount());
+        assertEquals(3, response.stats().respondentCount());
         assertNull(response.finalSelection());
         verify(eventStatsRepository).incrementView(1L);
+    }
+
+    @Test
+    void getHostEvent_returnsDetailWithoutIncrementingView() {
+        Event event = testEvent();
+        when(eventRepository.findByHostToken("host456")).thenReturn(Optional.of(event));
+        when(eventStatsRepository.findByEventId(1L)).thenReturn(Optional.of(new EventStats(1L, 10, 3)));
+        when(finalSelectionRepository.findByEventId(1L)).thenReturn(Optional.empty());
+        when(slotService.generateCandidateSlots(event)).thenReturn(List.of());
+
+        EventDetailResponse response = eventService.getHostEvent("host456");
+
+        assertEquals("pub123", response.publicId());
+        assertEquals(3, response.stats().respondentCount());
+        verify(eventStatsRepository, never()).incrementView(anyLong());
     }
 
     @Test
@@ -175,6 +191,22 @@ class EventServiceTest {
         verify(participantRepository).save(argThat(p -> p.displayName().equals("Bob")));
     }
 
+    @Test
+    void getParticipantAvailability_returnsSavedItems() {
+        Event event = testEvent();
+        Participant participant = new Participant(2L, 1L, "ptok", "Alice", Instant.now());
+        Instant slot = Instant.parse("2026-04-01T09:00:00Z");
+        when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
+        when(participantRepository.findByTokenAndEventId("ptok", 1L)).thenReturn(Optional.of(participant));
+        when(availabilityRepository.findByParticipantAndEventId(2L, 1L)).thenReturn(List.of(new AvailabilityRecord(2L, 1L, slot, 1.0)));
+
+        ParticipantAvailabilityResponse response = eventService.getParticipantAvailability("pub123", "ptok");
+
+        assertEquals("Alice", response.displayName());
+        assertEquals(1, response.items().size());
+        assertEquals(slot, response.items().get(0).slotStartUtc());
+    }
+
     // --- updateAvailability ---
 
     @Test
@@ -184,12 +216,27 @@ class EventServiceTest {
         when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
         when(participantRepository.findByTokenAndEventId("ptok", 1L)).thenReturn(Optional.of(new Participant(2L, 1L, "ptok", "Alice", Instant.now())));
         when(slotService.generateCandidateSlots(event)).thenReturn(List.of(slot));
+        when(availabilityRepository.countParticipantsWithAvailability(1L)).thenReturn(1L);
 
         eventService.updateAvailability("pub123", "ptok", new UpdateAvailabilityRequest(List.of(new AvailabilityItem(slot, 1.0))));
 
         verify(availabilityRepository).replaceForParticipant(eq(1L), eq(2L), anyList());
-        verify(eventStatsRepository).incrementResponse(1L);
+        verify(eventStatsRepository).setRespondentCount(1L, 1L);
         verify(resultCache).evict(1L);
+    }
+
+    @Test
+    void updateAvailability_emptySelectionClearsAndUpdatesRespondentCount() {
+        Event event = testEvent();
+        when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
+        when(participantRepository.findByTokenAndEventId("ptok", 1L)).thenReturn(Optional.of(new Participant(2L, 1L, "ptok", "Alice", Instant.now())));
+        when(slotService.generateCandidateSlots(event)).thenReturn(List.of());
+        when(availabilityRepository.countParticipantsWithAvailability(1L)).thenReturn(0L);
+
+        eventService.updateAvailability("pub123", "ptok", new UpdateAvailabilityRequest(List.of()));
+
+        verify(availabilityRepository).replaceForParticipant(eq(1L), eq(2L), eq(List.of()));
+        verify(eventStatsRepository).setRespondentCount(1L, 0L);
     }
 
     @Test
@@ -257,8 +304,9 @@ class EventServiceTest {
         Event event = testEvent();
         Instant slot = Instant.parse("2026-04-01T09:00:00Z");
         when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
+        when(finalSelectionRepository.findByEventId(1L)).thenReturn(Optional.empty());
         when(slotService.generateCandidateSlots(event)).thenReturn(List.of(slot));
-        when(finalSelectionRepository.upsert(1L, slot)).thenReturn(new FinalSelection(1L, slot, Instant.now()));
+        when(finalSelectionRepository.save(1L, slot)).thenReturn(new FinalSelection(1L, slot, Instant.now()));
 
         FinalSelectionResponse response = eventService.finalizeEvent("pub123", "host456", new FinalizeRequest(slot));
 
@@ -281,11 +329,24 @@ class EventServiceTest {
         Event event = testEvent();
         Instant badSlot = Instant.parse("2026-04-01T23:00:00Z");
         when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
+        when(finalSelectionRepository.findByEventId(1L)).thenReturn(Optional.empty());
         when(slotService.generateCandidateSlots(event)).thenReturn(List.of());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
             eventService.finalizeEvent("pub123", "host456", new FinalizeRequest(badSlot)));
         assertEquals(400, ex.getStatusCode().value());
+    }
+
+    @Test
+    void finalizeEvent_alreadyFinalized_throws409() {
+        Event event = testEvent();
+        Instant slot = Instant.parse("2026-04-01T09:00:00Z");
+        when(eventRepository.findByPublicId("pub123")).thenReturn(Optional.of(event));
+        when(finalSelectionRepository.findByEventId(1L)).thenReturn(Optional.of(new FinalSelection(1L, slot, Instant.now())));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+            eventService.finalizeEvent("pub123", "host456", new FinalizeRequest(slot)));
+        assertEquals(409, ex.getStatusCode().value());
     }
 
     // --- getFinalSelection ---

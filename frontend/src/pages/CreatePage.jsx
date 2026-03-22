@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import Card from "../components/Card";
@@ -22,9 +22,9 @@ const CREATE_DETAILS = {
   serious: {
     headerLabel: "Host setup",
     overview: [
-      { label: "Host ready", value: "Private finalize link" },
-      { label: "Guest ready", value: "Public response page" },
-      { label: "Portable", value: "Calendar export after finalize" },
+      { label: "Public page", value: "Ready for guests", note: "Clean link, no accounts required." },
+      { label: "Host workspace", value: "Private finalize flow", note: "Keep the final decision separate." },
+      { label: "Final handoff", value: "Calendar export", note: "Lock it once and ship it." },
     ],
     sections: {
       basics: "Event identity",
@@ -32,20 +32,15 @@ const CREATE_DETAILS = {
       window: "Date window",
       hours: "Daily hours",
     },
-    asideTitle: "What hosts get",
-    asideBody: "A private host page for finalization, a public event page for responses, and a cleaner path from link to decision.",
-    asidePoints: [
-      "Every event gets a shareable public URL.",
-      "Hosts keep a private control link for finalizing.",
-      "The same design language carries through every route.",
-    ],
+    asideTitle: "What this creates",
+    asideBody: "A premium public response page for guests, plus a private host workspace that locks the final decision once you are ready.",
   },
   goblin: {
     headerLabel: "Quest setup",
     overview: [
-      { label: "Host ready", value: "Private throne link" },
-      { label: "Guest ready", value: "Public cave page" },
-      { label: "Portable", value: "Calendar scroll after finalize" },
+      { label: "Public cave", value: "Ready for goblins", note: "One link for the whole horde." },
+      { label: "Throne room", value: "Private finalize flow", note: "Only the host gets the decree button." },
+      { label: "Final handoff", value: "Royal scroll export", note: "Lock it once and send the calendar." },
     ],
     sections: {
       basics: "Quest identity",
@@ -53,13 +48,8 @@ const CREATE_DETAILS = {
       window: "Date window",
       hours: "Daily hours",
     },
-    asideTitle: "What hosts get",
-    asideBody: "A private throne room for finalizing, a public quest page for the cave, and a much cleaner way to stop scheduling drama.",
-    asidePoints: [
-      "Every quest gets a public link for the horde.",
-      "Hosts keep a private link for decrees.",
-      "The whole flow stays polished, even in Goblin Mode.",
-    ],
+    asideTitle: "What this creates",
+    asideBody: "A polished public cave page for the horde, plus a private throne room that locks the decree once you pick the winner.",
   },
 };
 
@@ -70,8 +60,24 @@ export default function CreatePage({ copy, mode }) {
   const [loading, setLoading] = useState(false);
   const details = CREATE_DETAILS[mode];
 
+  const schedulePreview = useMemo(() => {
+    const dateRange = form.startDate && form.endDate ? `${form.startDate} to ${form.endDate}` : "Choose your date range";
+    return {
+      timezone: form.timezone || "Timezone pending",
+      dateRange,
+      hours: `${form.dailyStartTime} - ${form.dailyEndTime}`,
+      duration: `${form.durationMinutes} minute meeting`,
+    };
+  }, [form.dailyEndTime, form.dailyStartTime, form.durationMinutes, form.endDate, form.startDate, form.timezone]);
+
   async function handleSubmit(event) {
     event.preventDefault();
+    const validationError = validateForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
@@ -102,6 +108,7 @@ export default function CreatePage({ copy, mode }) {
               <div key={item.label} className="metric-pill">
                 <span className="metric-label">{item.label}</span>
                 <span className="metric-value">{item.value}</span>
+                <span className="metric-note">{item.note}</span>
               </div>
             ))}
           </div>
@@ -111,13 +118,11 @@ export default function CreatePage({ copy, mode }) {
           <span className="eyebrow">{details.asideTitle}</span>
           <h2 className="display-title text-[2.4rem] leading-none">{copy.create.shareTitle}</h2>
           <p className="text-sm leading-7 text-[var(--muted)]">{details.asideBody}</p>
-          <div className="space-y-3">
-            {details.asidePoints.map((item, index) => (
-              <div key={item} className="flex items-start gap-3">
-                <span className="list-number">{index + 1}</span>
-                <p className="pt-1 text-sm leading-7 text-[var(--text)]">{item}</p>
-              </div>
-            ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MetricTile label="Timezone" value={schedulePreview.timezone} />
+            <MetricTile label="Date range" value={schedulePreview.dateRange} />
+            <MetricTile label="Daily window" value={schedulePreview.hours} />
+            <MetricTile label="Duration" value={schedulePreview.duration} />
           </div>
         </Card>
       </section>
@@ -142,7 +147,7 @@ export default function CreatePage({ copy, mode }) {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </Field>
-            <Field label={copy.create.fieldTimezone}>
+            <Field label={copy.create.fieldTimezone} help="Use an IANA timezone like America/New_York.">
               <input className="input" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} required />
             </Field>
           </FormSection>
@@ -158,7 +163,7 @@ export default function CreatePage({ copy, mode }) {
                   <option value={90}>90 minutes</option>
                 </select>
               </Field>
-              <Field label={copy.create.fieldSlotSize}>
+              <Field label={copy.create.fieldSlotSize} help="Fixed at 30 minutes for this version.">
                 <input className="input" value="30 minutes" disabled />
               </Field>
             </div>
@@ -196,7 +201,7 @@ export default function CreatePage({ copy, mode }) {
             <button className="btn btn-primary rounded-full px-6 py-3 text-sm font-semibold" disabled={loading}>
               {loading ? copy.create.submitLoading : copy.create.submitButton}
             </button>
-            <span className="text-sm text-[var(--muted)]">Share links appear instantly once the event is created.</span>
+            <span className="text-sm text-[var(--muted)]">Guests get a public page. Hosts get a separate private workspace.</span>
           </div>
         </Card>
 
@@ -225,7 +230,16 @@ export default function CreatePage({ copy, mode }) {
                   </div>
                 </div>
 
-                <StatusBanner tone="success">Your event is live. Send the public link to guests and keep the host link private.</StatusBanner>
+                <div className="flex flex-wrap gap-3">
+                  <Link className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold" to={`/e/${result.publicId}`}>
+                    Open public page
+                  </Link>
+                  <a className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold" href={result.hostLink}>
+                    Open host workspace
+                  </a>
+                </div>
+
+                <StatusBanner tone="success">Your event is live. Share the public page widely and keep the host workspace private.</StatusBanner>
               </>
             ) : (
               <p className="text-sm leading-7 text-[var(--muted)]">{copy.create.shareEmpty}</p>
@@ -234,13 +248,45 @@ export default function CreatePage({ copy, mode }) {
 
           <Card variant="ghost" className="space-y-3">
             <span className="eyebrow">Preview</span>
-            <h3 className="display-title text-[2rem] leading-none">A cleaner share moment.</h3>
+            <h3 className="display-title text-[2rem] leading-none">A cleaner handoff from setup to share.</h3>
             <p className="text-sm leading-7 text-[var(--muted)]">
-              The create flow now hands off directly into the event, results, and host surfaces so the whole experience feels related from start to finish.
+              The event page, ranking screen, and host workspace now share the same visual system so the product feels related end to end.
             </p>
           </Card>
         </div>
       </section>
+    </div>
+  );
+}
+
+function validateForm(form) {
+  if (!form.title.trim()) {
+    return "Add a title before creating the event.";
+  }
+  if (!form.startDate || !form.endDate) {
+    return "Choose both a start date and an end date.";
+  }
+  if (form.endDate < form.startDate) {
+    return "End date must be on or after the start date.";
+  }
+  if (form.dailyEndTime <= form.dailyStartTime) {
+    return "Daily end time must be after the daily start time.";
+  }
+
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: form.timezone }).format(new Date());
+  } catch {
+    return "Use a valid IANA timezone, like America/New_York.";
+  }
+
+  return "";
+}
+
+function MetricTile({ label, value }) {
+  return (
+    <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/55 p-4">
+      <p className="detail-label">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--text)]">{value}</p>
     </div>
   );
 }

@@ -24,6 +24,9 @@ public class AvailabilityRepository {
 
     public void replaceForParticipant(long eventId, long participantId, List<AvailabilityRecord> items) {
         jdbcTemplate.update("delete from availability where participant_id = ? and event_id = ?", participantId, eventId);
+        if (items.isEmpty()) {
+            return;
+        }
         jdbcTemplate.batchUpdate("""
             insert into availability (participant_id, event_id, slot_start_utc, weight)
             values (?, ?, ?, ?)
@@ -38,5 +41,22 @@ public class AvailabilityRepository {
     public List<AvailabilityRecord> findByEventId(long eventId) {
         return jdbcTemplate.query("select participant_id, event_id, slot_start_utc, weight from availability where event_id = ?", mapper, eventId);
     }
-}
 
+    public List<AvailabilityRecord> findByParticipantAndEventId(long participantId, long eventId) {
+        return jdbcTemplate.query(
+            "select participant_id, event_id, slot_start_utc, weight from availability where participant_id = ? and event_id = ? order by slot_start_utc asc",
+            mapper,
+            participantId,
+            eventId
+        );
+    }
+
+    public long countParticipantsWithAvailability(long eventId) {
+        Long count = jdbcTemplate.queryForObject(
+            "select count(distinct participant_id) from availability where event_id = ?",
+            Long.class,
+            eventId
+        );
+        return count == null ? 0L : count;
+    }
+}

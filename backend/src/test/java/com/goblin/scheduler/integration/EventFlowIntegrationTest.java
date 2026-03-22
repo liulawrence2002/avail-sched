@@ -109,6 +109,32 @@ class EventFlowIntegrationTest {
                     """.formatted(firstSlot, secondSlot)))
             .andExpect(status().isNoContent());
 
+        mockMvc.perform(get("/api/events/{publicId}/participants/{token}/availability", publicId, participantToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.displayName").value("Avery"))
+            .andExpect(jsonPath("$.items.length()").value(2));
+
+        mockMvc.perform(get("/api/events/{publicId}", publicId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.stats.respondentCount").value(1));
+
+        mockMvc.perform(put("/api/events/{publicId}/participants/{token}/availability", publicId, participantToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "items": []
+                    }
+                    """))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/events/{publicId}/participants/{token}/availability", publicId, participantToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items.length()").value(0));
+
+        mockMvc.perform(get("/api/events/{publicId}", publicId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.stats.respondentCount").value(0));
+
         mockMvc.perform(get("/api/events/{publicId}/results", publicId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.publicId").value(publicId))
@@ -138,6 +164,17 @@ class EventFlowIntegrationTest {
 
         mockMvc.perform(get("/api/host/{hostToken}", hostToken))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.publicId").value(publicId));
+            .andExpect(jsonPath("$.publicId").value(publicId))
+            .andExpect(jsonPath("$.stats.respondentCount").value(0));
+
+        mockMvc.perform(post("/api/events/{publicId}/finalize", publicId)
+                .queryParam("hostToken", hostToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "slotStartUtc": "%s"
+                    }
+                    """.formatted(firstSlot)))
+            .andExpect(status().isConflict());
     }
 }

@@ -20,7 +20,6 @@ public record EventDetailResponse(
     StatsView stats,
     FinalView finalSelection
 ) {
-    public record StatsView(long viewCount, long responseCount) {}
+    public record StatsView(long viewCount, long respondentCount) {}
     public record FinalView(Instant slotStartUtc, Instant finalizedAt) {}
 }
-

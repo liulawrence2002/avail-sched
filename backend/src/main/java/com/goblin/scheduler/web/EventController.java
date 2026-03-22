@@ -46,6 +46,12 @@ public class EventController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Get saved participant availability for an event")
+    @GetMapping("/events/{publicId}/participants/{token}/availability")
+    public ParticipantAvailabilityResponse getParticipantAvailability(@PathVariable String publicId, @PathVariable String token) {
+        return eventService.getParticipantAvailability(publicId, token);
+    }
+
     @Operation(summary = "Get scored availability results")
     @GetMapping("/events/{publicId}/results")
     public ResultsResponse getResults(@PathVariable String publicId) {
@@ -75,7 +81,7 @@ public class EventController {
 
     @Operation(summary = "Get event details by host token")
     @GetMapping("/host/{hostToken}")
-    public Event hostEvent(@PathVariable String hostToken) {
-        return eventService.requireEventByHostToken(hostToken);
+    public EventDetailResponse hostEvent(@PathVariable String hostToken) {
+        return eventService.getHostEvent(hostToken);
     }
 }

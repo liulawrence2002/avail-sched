@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Goblin Scheduler social preview</title>
+  <desc id="desc">A premium scheduling preview card for Goblin Scheduler.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f7f3ec" />
+      <stop offset="100%" stop-color="#ece4d8" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#7389a8" />
+      <stop offset="100%" stop-color="#d6b8a0" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1060" cy="98" r="160" fill="#ffffff" fill-opacity="0.25" />
+  <circle cx="134" cy="526" r="130" fill="#d6b8a0" fill-opacity="0.2" />
+  <rect x="72" y="80" width="1056" height="470" rx="36" fill="#fbf7f2" stroke="#e6ddd1" />
+  <rect x="112" y="122" width="90" height="90" rx="24" fill="url(#accent)" />
+  <text x="157" y="182" text-anchor="middle" font-family="Manrope, sans-serif" font-size="52" font-weight="800" fill="#1c1917">
+    G
+  </text>
+  <text x="238" y="156" font-family="Manrope, sans-serif" font-size="24" font-weight="700" fill="#6c625a">
+    Premium group scheduling
+  </text>
+  <text x="112" y="256" font-family="Instrument Serif, Georgia, serif" font-size="82" fill="#1c1917">
+    Make the scheduling link
+  </text>
+  <text x="112" y="332" font-family="Instrument Serif, Georgia, serif" font-size="82" fill="#1c1917">
+    feel ready to share.
+  </text>
+  <text x="112" y="404" font-family="Manrope, sans-serif" font-size="30" fill="#5f554d">
+    Create calm response pages for dinners, clubs, workshops,
+  </text>
+  <text x="112" y="444" font-family="Manrope, sans-serif" font-size="30" fill="#5f554d">
+    and lightweight teams. No accounts required.
+  </text>
+  <rect x="786" y="172" width="268" height="72" rx="22" fill="#ffffff" stroke="#e4dbcf" />
+  <text x="822" y="217" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#1c1917">
+    Thu 6:30 PM
+  </text>
+  <text x="1010" y="217" text-anchor="end" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#2f425d">
+    92%
+  </text>
+  <rect x="786" y="268" width="268" height="72" rx="22" fill="#eef2f7" stroke="#dce3eb" />
+  <text x="822" y="313" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#1c1917">
+    Wed 7:00 PM
+  </text>
+  <text x="1010" y="313" text-anchor="end" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#6f7f95">
+    78%
+  </text>
+  <rect x="786" y="364" width="268" height="72" rx="22" fill="#f6eee7" stroke="#eadccd" />
+  <text x="822" y="409" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#1c1917">
+    Sat 11:00 AM
+  </text>
+  <text x="1010" y="409" text-anchor="end" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="#9a745d">
+    61%
+  </text>
+</svg>

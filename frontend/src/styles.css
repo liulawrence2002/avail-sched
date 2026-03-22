@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f5f0e8;
+  --bg: #f2eee7;
   --surface: #fbf7f2;
-  --surface-strong: #ebe1d5;
+  --surface-strong: #ebe2d6;
   --text: #1c1917;
   --muted: #6c625a;
-  --accent-serious: #93a38d;
+  --accent-serious: #7b91ad;
   --accent-goblin: #9db66b;
   --accent-warm: #d6b8a0;
   --line: rgba(28, 25, 23, 0.08);
   --font-ui: "Manrope", system-ui, sans-serif;
   --font-display: "Instrument Serif", Georgia, serif;
   --accent: var(--accent-serious);
-  --accent-soft: rgba(147, 163, 141, 0.18);
-  --accent-deep: #5d6c60;
-  --glow: rgba(214, 184, 160, 0.35);
+  --accent-soft: rgba(123, 145, 173, 0.18);
+  --accent-deep: #2f425d;
+  --glow: rgba(123, 145, 173, 0.2);
   --shadow-soft: 0 18px 40px rgba(81, 61, 41, 0.08);
   --shadow-lg: 0 28px 80px rgba(81, 61, 41, 0.1);
   color: var(--text);
@@ -41,7 +41,8 @@ body {
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.86), transparent 32%),
-    linear-gradient(180deg, #f7f3ec 0%, #f5efe7 45%, #efe6dc 100%);
+    radial-gradient(circle at top right, rgba(123, 145, 173, 0.12), transparent 28%),
+    linear-gradient(180deg, #f8f4ee 0%, #f1ece5 48%, #ebe2d6 100%);
 }
 
 body,
@@ -68,9 +69,9 @@ img {
 
 .theme-serious {
   --accent: var(--accent-serious);
-  --accent-soft: rgba(147, 163, 141, 0.18);
-  --accent-deep: #5d6c60;
-  --glow: rgba(214, 184, 160, 0.35);
+  --accent-soft: rgba(123, 145, 173, 0.18);
+  --accent-deep: #2f425d;
+  --glow: rgba(123, 145, 173, 0.2);
 }
 
 .theme-goblin {
@@ -697,6 +698,138 @@ img {
   box-shadow: 0 12px 24px rgba(81, 61, 41, 0.08);
 }
 
+.demo-window {
+  border-radius: 2rem;
+  border: 1px solid rgba(28, 25, 23, 0.06);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.7), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.34));
+  padding: 1rem;
+  box-shadow: 0 22px 42px rgba(47, 66, 93, 0.08);
+}
+
+.demo-window-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.45rem 1rem;
+}
+
+.demo-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.demo-window-shell {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.demo-panel {
+  border-radius: 1.5rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 1rem 1.1rem;
+}
+
+.demo-panel--highlight {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.75), transparent 30%),
+    linear-gradient(135deg, rgba(123, 145, 173, 0.16), rgba(214, 184, 160, 0.18));
+}
+
+.demo-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.demo-title {
+  margin: 0.35rem 0 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.demo-chip,
+.demo-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.demo-chip {
+  border: 1px solid rgba(28, 25, 23, 0.06);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+}
+
+.demo-score {
+  background: var(--text);
+  color: white;
+}
+
+.demo-copy {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.demo-board {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.demo-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-radius: 1.3rem;
+  border: 1px solid rgba(28, 25, 23, 0.06);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.95rem;
+  font-size: 0.88rem;
+}
+
+.demo-slot strong {
+  font-size: 0.9rem;
+}
+
+.demo-slot[data-state="yes"] {
+  background: rgba(157, 182, 107, 0.2);
+}
+
+.demo-slot[data-state="maybe"] {
+  background: rgba(123, 145, 173, 0.14);
+}
+
+.demo-slot[data-state="bribe"] {
+  background: rgba(214, 184, 160, 0.2);
+}
+
+.legal-prose h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.legal-prose p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.75;
+}
+
 .list-number {
   display: inline-flex;
   height: 2rem;
@@ -756,6 +889,15 @@ button:focus-visible {
 
   .display-title-lg {
     font-size: clamp(2.25rem, 11vw, 3.4rem);
+  }
+
+  .demo-window-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demo-board {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -3,42 +3,71 @@ import Card from "../components/Card";
 
 const LANDING_DETAILS = {
   serious: {
-    metrics: [
-      { label: "Share once", value: "No accounts", note: "A single link handles the whole group." },
-      { label: "Signals", value: "Weighted responses", note: "See enthusiasm, flexibility, and hard no's." },
-      { label: "Finish", value: "Calendar ready", note: "Pick the winner and export in one step." },
+    audiences: [
+      {
+        eyebrow: "Social plans",
+        title: "Dinners, clubs, and weekend hangs",
+        body: "Make the invite link look intentional instead of tossing a spreadsheet into the group chat.",
+      },
+      {
+        eyebrow: "Lean teams",
+        title: "Workshops, retros, and office hours",
+        body: "Use one polished page when a full scheduling suite would be overkill.",
+      },
+      {
+        eyebrow: "Client work",
+        title: "Small-group sessions that need polish",
+        body: "Share a page that feels premium enough to represent your brand in front of clients or members.",
+      },
     ],
-    storyTitle: "A calmer way to get everyone to yes.",
-    storyBody:
-      "Borrow the warmth of a premium product page, then give it a job to do. Goblin Scheduler keeps the flow simple, tactile, and easy to share.",
-    featureCards: [
-      { eyebrow: "Shareable", title: "One page for the whole group", body: "Hosts get a polished event page, guests get an obvious place to respond, and nobody has to log in first." },
-      { eyebrow: "Readable", title: "Results that feel human", body: "Recommended times show both the score and the people behind it, so hosts can finalize with confidence." },
-      { eyebrow: "Portable", title: "A simple finish", body: "Finalize the winning slot, then send it straight into a calendar instead of transcribing it by hand." },
+    strengths: [
+      "Public response page plus private host workspace",
+      "Weighted availability instead of flat yes or no",
+      "One-way finalization with calendar export",
     ],
-    closingTitle: "Make the planning page feel as intentional as the event.",
-    closingBody: "From team dinners to family weekends, the flow stays calm, warm, and obvious on every screen size.",
-    orbitNote: "Designed to feel softer than a dashboard and more useful than a landing page.",
+    flowTitle: "Built for people who host things.",
+    flowBody: "The core pitch is simple: make scheduling feel closer to a premium invitation and farther from admin work.",
+    closingTitle: "Charge for polish, clarity, and trust.",
+    closingBody: "The product does not need enterprise complexity to be valuable. It needs a smooth setup, a credible share surface, and a finish that feels final.",
+    demoNote: "A real product preview beats made-up proof cards every time.",
   },
   goblin: {
-    metrics: [
-      { label: "Share once", value: "No accounts", note: "One sacred link for the whole cave." },
-      { label: "Signals", value: "Weighted vibes", note: "Capture yes, maybe, snack-bribe, and absolutely not." },
-      { label: "Finish", value: "Calendar ready", note: "When the cave agrees, export the decree." },
+    audiences: [
+      {
+        eyebrow: "Snack diplomacy",
+        title: "Caves, hangouts, and mossy plans",
+        body: "Still the same premium scheduling flow, just with a little more cave atmosphere.",
+      },
+      {
+        eyebrow: "Low-stakes chaos",
+        title: "Board games and food quests",
+        body: "Let the horde answer from one page instead of fermenting ten side threads.",
+      },
+      {
+        eyebrow: "Optional flavor",
+        title: "Whimsy without losing trust",
+        body: "Goblin Mode stays playful while the underlying flow keeps its grown-up posture.",
+      },
     ],
-    storyTitle: "A gentler ritual for chaotic creatures.",
-    storyBody:
-      "It still has goblin energy, just with better posture. The new surface stays warm, premium, and a little mischievous without becoming loud.",
-    featureCards: [
-      { eyebrow: "Shareable", title: "One link to rule the logistics", body: "Send one page into the chat and let the horde sort itself out without ten branching threads." },
-      { eyebrow: "Readable", title: "Results with context", body: "See the best windows, the strongest slots, and who can actually make each one." },
-      { eyebrow: "Portable", title: "A clean ending", body: "Pick the winner, download the calendar file, and stop talking about scheduling forever." },
+    strengths: [
+      "One public cave page and one private throne room",
+      "Weighted cave math instead of flat yes or no",
+      "A locked decree plus royal scroll export",
     ],
-    closingTitle: "Keep the whimsy. Lose the planning sludge.",
-    closingBody: "The flow stays playful in Goblin Mode, but the visual system is calmer, clearer, and much easier to trust.",
-    orbitNote: "Premium enough for serious plans. Goblin enough for snack diplomacy.",
+    flowTitle: "Same reliable engine. More moss.",
+    flowBody: "Goblin Mode is the personality layer, not the product strategy. The premium behavior stays exactly the same underneath it.",
+    closingTitle: "Keep the goblin energy optional.",
+    closingBody: "The serious shell sells the product. Goblin Mode becomes the memorable delight that makes it feel distinct.",
+    demoNote: "Still premium. Just a little gremlin-coded.",
   },
 };
+
+const DEMO_SLOTS = [
+  { time: "Tue 6:30 PM", state: "yes" },
+  { time: "Wed 7:00 PM", state: "maybe" },
+  { time: "Thu 6:30 PM", state: "yes" },
+  { time: "Sat 11:00 AM", state: "bribe" },
+];
 
 export default function LandingPage({ copy, mode }) {
   const details = LANDING_DETAILS[mode];
@@ -46,7 +75,7 @@ export default function LandingPage({ copy, mode }) {
   return (
     <div className="space-y-6 md:space-y-8">
       <section className="surface-card surface-strong overflow-hidden px-6 py-8 md:px-8 md:py-10 lg:px-12 lg:py-12">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr] lg:items-end">
+        <div className="grid gap-8 lg:grid-cols-[1.02fr,0.98fr] lg:items-center">
           <div className="space-y-6">
             <span className="eyebrow">{copy.landing.badge}</span>
             <div className="space-y-4">
@@ -64,46 +93,71 @@ export default function LandingPage({ copy, mode }) {
             </div>
 
             <div className="pill-row">
-              {details.metrics.map((item) => (
-                <div key={item.label} className="metric-pill">
-                  <span className="metric-label">{item.label}</span>
-                  <span className="metric-value">{item.value}</span>
-                  <span className="metric-note">{item.note}</span>
-                </div>
+              {details.strengths.map((item) => (
+                <span key={item} className="meta-pill">
+                  {item}
+                </span>
               ))}
             </div>
           </div>
 
-          <div className="grid gap-4">
-            <div className="hero-orbit min-h-[18rem]">
-              <div className="hero-orbit-center" aria-hidden="true">
-                G
-              </div>
-              <div className="hero-orbit-note">{details.orbitNote}</div>
+          <div className="demo-window">
+            <div className="demo-window-bar">
+              <span className="eyebrow">Product Demo</span>
+              <span className="demo-note">{details.demoNote}</span>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="insight-card">
-                <div className="insight-meta">Response pulse</div>
-                <div className="insight-value">82%</div>
-                <p className="insight-copy">A soft recommendation card helps the best time stand out immediately.</p>
+            <div className="demo-window-shell">
+              <div className="demo-panel">
+                <div className="demo-panel-header">
+                  <div>
+                    <p className="detail-label">Event page</p>
+                    <h2 className="demo-title">Neighborhood Dinner Club</h2>
+                  </div>
+                  <span className="demo-chip">No accounts</span>
+                </div>
+                <p className="demo-copy">Guests answer from one clean page, then the host locks the final time from a separate private workspace.</p>
               </div>
 
-              <div className="insight-card">
-                <div className="insight-meta">Host clarity</div>
-                <div className="insight-value">Top 5</div>
-                <p className="insight-copy">Scored results stay readable even when the event gets crowded.</p>
+              <div className="demo-board">
+                {DEMO_SLOTS.map((slot) => (
+                  <div key={slot.time} className="demo-slot" data-state={slot.state}>
+                    <span>{slot.time}</span>
+                    <strong>{slot.state === "yes" ? copy.availability.yes : slot.state === "maybe" ? copy.availability.maybe : copy.availability.bribe}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="demo-panel demo-panel--highlight">
+                <div className="demo-panel-header">
+                  <div>
+                    <p className="detail-label">Top recommendation</p>
+                    <h3 className="demo-title">Thu 6:30 PM</h3>
+                  </div>
+                  <span className="demo-score">92%</span>
+                </div>
+                <p className="demo-copy">Finalize once, export to calendar, and stop coordinating.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      <section className="grid gap-4 lg:grid-cols-3">
+        {details.audiences.map((item) => (
+          <Card key={item.title} className="space-y-3">
+            <span className="eyebrow">{item.eyebrow}</span>
+            <h2 className="display-title text-[2rem] leading-none">{item.title}</h2>
+            <p className="text-sm leading-7 text-[var(--muted)]">{item.body}</p>
+          </Card>
+        ))}
+      </section>
+
       <section id="how-it-works" className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
         <Card variant="ghost" className="space-y-5">
           <span className="eyebrow">{copy.landing.howTitle}</span>
-          <h2 className="display-title display-title-lg text-[2.8rem]">{details.storyTitle}</h2>
-          <p className="section-kicker">{details.storyBody}</p>
+          <h2 className="display-title display-title-lg text-[2.8rem]">{details.flowTitle}</h2>
+          <p className="section-kicker">{details.flowBody}</p>
           <p className="text-sm leading-7 text-[var(--muted)]">{copy.landing.howDescription}</p>
 
           <div className="space-y-3 pt-2">
@@ -117,20 +171,36 @@ export default function LandingPage({ copy, mode }) {
         </Card>
 
         <div className="grid gap-4">
-          {details.featureCards.map((item) => (
-            <Card key={item.title} className="space-y-3">
-              <span className="eyebrow">{item.eyebrow}</span>
-              <h3 className="display-title text-[2rem] leading-none">{item.title}</h3>
-              <p className="text-sm leading-7 text-[var(--muted)]">{item.body}</p>
-            </Card>
-          ))}
+          <Card className="space-y-3">
+            <span className="eyebrow">What makes it sellable</span>
+            <h3 className="display-title text-[2rem] leading-none">Premium behavior, not just premium paint.</h3>
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              Trust grows when people can revisit their saved response, hosts see honest respondent counts, and finalization actually feels final.
+            </p>
+          </Card>
+
+          <Card className="space-y-3">
+            <span className="eyebrow">Share surface</span>
+            <h3 className="display-title text-[2rem] leading-none">A link you would not mind sending to clients.</h3>
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              The design language stays warm and memorable, but the serious-default shell is doing the selling work now.
+            </p>
+          </Card>
+
+          <Card className="space-y-3">
+            <span className="eyebrow">Finish</span>
+            <h3 className="display-title text-[2rem] leading-none">Once the time is chosen, it stays chosen.</h3>
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              That finality makes the product feel dependable, which matters a lot more than adding feature bulk too early.
+            </p>
+          </Card>
         </div>
       </section>
 
       <section className="surface-card px-6 py-8 md:px-8 md:py-10">
         <div className="grid gap-6 lg:grid-cols-[1fr,0.8fr] lg:items-end">
           <div className="space-y-4">
-            <span className="eyebrow">Finish with confidence</span>
+            <span className="eyebrow">Launch-ready direction</span>
             <h2 className="display-title display-title-lg text-[2.9rem]">{details.closingTitle}</h2>
             <p className="section-kicker">{details.closingBody}</p>
           </div>
@@ -139,8 +209,8 @@ export default function LandingPage({ copy, mode }) {
             <Link to="/create" className="btn btn-primary rounded-full px-6 py-3 text-sm font-semibold">
               {copy.landing.cta}
             </Link>
-            <Link to="/create" className="btn btn-secondary rounded-full px-6 py-3 text-sm font-semibold">
-              Build a share page
+            <Link to="/terms" className="btn btn-secondary rounded-full px-6 py-3 text-sm font-semibold">
+              Review legal pages
             </Link>
           </div>
         </div>

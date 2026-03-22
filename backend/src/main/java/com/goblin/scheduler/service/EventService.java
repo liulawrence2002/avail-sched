@@ -90,30 +90,22 @@ public class EventService {
 
     public EventDetailResponse getEvent(String publicId) {
         Event event = requireEvent(publicId);
-        eventStatsRepository.incrementView(event.id());
-        EventStats stats = eventStatsRepository.findByEventId(event.id()).orElse(new EventStats(event.id(), 0, 0));
-        FinalSelection finalSelection = finalSelectionRepository.findByEventId(event.id()).orElse(null);
-        return new EventDetailResponse(
-            event.publicId(),
-            event.title(),
-            event.description(),
-            event.timezone(),
-            event.slotMinutes(),
-            event.durationMinutes(),
-            event.startDate(),
-            event.endDate(),
-            event.dailyStartTime(),
-            event.dailyEndTime(),
-            slotService.generateCandidateSlots(event),
-            new EventDetailResponse.StatsView(stats.viewCount(), stats.responseCount()),
-            finalSelection == null ? null : new EventDetailResponse.FinalView(finalSelection.slotStartUtc(), finalSelection.finalizedAt())
-        );
+        return buildEventDetailResponse(event, true);
     }
 
-    public JoinParticipantResponse joinParticipant(String publicId, JoinParticipantRequest request) {
+    public EventDetailResponse getHostEvent(String hostToken) {
+        Event event = requireEventByHostToken(hostToken);
+        return buildEventDetailResponse(event, false);
+    }
+
+    public ParticipantAvailabilityResponse getParticipantAvailability(String publicId, String token) {
         Event event = requireEvent(publicId);
-        Participant participant = participantRepository.save(new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), TextSanitizer.sanitize(request.displayName()), Instant.now()));
-        return new JoinParticipantResponse(participant.token());
+        Participant participant = participantRepository.findByTokenAndEventId(token, event.id())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Participant not found"));
+        List<AvailabilityItem> items = availabilityRepository.findByParticipantAndEventId(participant.id(), event.id()).stream()
+            .map(record -> new AvailabilityItem(record.slotStartUtc(), record.weight()))
+            .toList();
+        return new ParticipantAvailabilityResponse(participant.displayName(), items);
     }
 
     public void updateAvailability(String publicId, String token, UpdateAvailabilityRequest request) {
@@ -126,7 +118,7 @@ public class EventService {
             .map(item -> new AvailabilityRecord(participant.id(), event.id(), item.slotStartUtc(), item.weight()))
             .toList();
         availabilityRepository.replaceForParticipant(event.id(), participant.id(), records);
-        eventStatsRepository.incrementResponse(event.id());
+        eventStatsRepository.setRespondentCount(event.id(), availabilityRepository.countParticipantsWithAvailability(event.id()));
         resultCache.evict(event.id());
     }
 
@@ -146,10 +138,13 @@ public class EventService {
         if (!event.hostToken().equals(hostToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid host token");
         }
+        if (finalSelectionRepository.findByEventId(event.id()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This event has already been finalized");
+        }
         if (!slotService.generateCandidateSlots(event).contains(request.slotStartUtc())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Slot is not valid for this event");
         }
-        FinalSelection selection = finalSelectionRepository.upsert(event.id(), request.slotStartUtc());
+        FinalSelection selection = finalSelectionRepository.save(event.id(), request.slotStartUtc());
         return new FinalSelectionResponse(publicId, selection.slotStartUtc(), selection.finalizedAt());
     }
 
@@ -191,6 +186,36 @@ public class EventService {
     public Event requireEventByHostToken(String hostToken) {
         return eventRepository.findByHostToken(hostToken)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Host event not found"));
+    }
+
+    private EventDetailResponse buildEventDetailResponse(Event event, boolean trackView) {
+        if (trackView) {
+            eventStatsRepository.incrementView(event.id());
+        }
+        EventStats stats = eventStatsRepository.findByEventId(event.id()).orElse(new EventStats(event.id(), 0, 0));
+        FinalSelection finalSelection = finalSelectionRepository.findByEventId(event.id()).orElse(null);
+        List<Instant> candidateSlots = slotService.generateCandidateSlots(event);
+        return new EventDetailResponse(
+            event.publicId(),
+            event.title(),
+            event.description(),
+            event.timezone(),
+            event.slotMinutes(),
+            event.durationMinutes(),
+            event.startDate(),
+            event.endDate(),
+            event.dailyStartTime(),
+            event.dailyEndTime(),
+            candidateSlots,
+            new EventDetailResponse.StatsView(stats.viewCount(), stats.respondentCount()),
+            finalSelection == null ? null : new EventDetailResponse.FinalView(finalSelection.slotStartUtc(), finalSelection.finalizedAt())
+        );
+    }
+
+    public JoinParticipantResponse joinParticipant(String publicId, JoinParticipantRequest request) {
+        Event event = requireEvent(publicId);
+        Participant participant = participantRepository.save(new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), TextSanitizer.sanitize(request.displayName()), Instant.now()));
+        return new JoinParticipantResponse(participant.token());
     }
 
     private Event requireEvent(String publicId) {

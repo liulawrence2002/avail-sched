@@ -22,8 +22,8 @@ public class EventStatsRepository {
         jdbcTemplate.update("update event_stats set view_count = view_count + 1 where event_id = ?", eventId);
     }
 
-    public void incrementResponse(long eventId) {
-        jdbcTemplate.update("update event_stats set response_count = response_count + 1 where event_id = ?", eventId);
+    public void setRespondentCount(long eventId, long respondentCount) {
+        jdbcTemplate.update("update event_stats set response_count = ? where event_id = ?", respondentCount, eventId);
     }
 
     public Optional<EventStats> findByEventId(long eventId) {

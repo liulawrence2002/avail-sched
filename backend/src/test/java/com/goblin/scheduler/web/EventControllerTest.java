@@ -1,7 +1,6 @@
 package com.goblin.scheduler.web;
 
 import com.goblin.scheduler.dto.*;
-import com.goblin.scheduler.model.Event;
 import com.goblin.scheduler.service.EventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -139,13 +138,26 @@ class EventControllerTest {
     }
 
     @Test
-    void updateAvailability_emptyItems_returns400() throws Exception {
+    void updateAvailability_emptyItems_returns204() throws Exception {
+        doNothing().when(eventService).updateAvailability(eq("pub123"), eq("tok789"), any());
+
         mockMvc.perform(put("/api/events/pub123/participants/tok789/availability")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"items":[]}
                     """))
-            .andExpect(status().isBadRequest());
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getParticipantAvailability_returnsSavedItems() throws Exception {
+        when(eventService.getParticipantAvailability("pub123", "tok789"))
+            .thenReturn(new ParticipantAvailabilityResponse("Alice", List.of(new AvailabilityItem(Instant.parse("2026-04-01T09:00:00Z"), 1.0))));
+
+        mockMvc.perform(get("/api/events/pub123/participants/tok789/availability"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.displayName").value("Alice"))
+            .andExpect(jsonPath("$.items[0].weight").value(1.0));
     }
 
     // --- GET /api/events/{publicId}/results ---
@@ -226,13 +238,17 @@ class EventControllerTest {
 
     @Test
     void hostEvent_returnsEvent() throws Exception {
-        Event event = new Event(1L, "pub123", "host456", "Title", null, "UTC", 30, 60,
+        EventDetailResponse event = new EventDetailResponse(
+            "pub123", "Title", null, "UTC", 30, 60,
             LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 2),
-            LocalTime.of(9, 0), LocalTime.of(17, 0), Instant.now());
-        when(eventService.requireEventByHostToken("host456")).thenReturn(event);
+            LocalTime.of(9, 0), LocalTime.of(17, 0),
+            List.of(), new EventDetailResponse.StatsView(4, 2), null
+        );
+        when(eventService.getHostEvent("host456")).thenReturn(event);
 
         mockMvc.perform(get("/api/host/host456"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.publicId").value("pub123"));
+            .andExpect(jsonPath("$.publicId").value("pub123"))
+            .andExpect(jsonPath("$.stats.respondentCount").value(2));
     }
 }

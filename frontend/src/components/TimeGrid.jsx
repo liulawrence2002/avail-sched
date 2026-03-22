@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AVAILABILITY_OPTIONS, buildGrid, formatInstant } from "../utils";
 
-export default function TimeGrid({ event, selections, onChange, copy }) {
+export default function TimeGrid({ event, selections, onChange, copy, disabled = false }) {
   const columns = useMemo(() => buildGrid(event.candidateSlotsUtc, event.timezone), [event.candidateSlotsUtc, event.timezone]);
   const [activeWeight, setActiveWeight] = useState(1.0);
   const [dragging, setDragging] = useState(false);
@@ -10,16 +10,25 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
 
   const applyWeight = useCallback(
     (slot) => {
+      if (disabled) {
+        return;
+      }
       onChange({ ...selectionsRef.current, [slot]: activeWeight });
     },
-    [activeWeight, onChange],
+    [activeWeight, disabled, onChange],
   );
 
   function clearAll() {
+    if (disabled) {
+      return;
+    }
     onChange({});
   }
 
   function markEvenings() {
+    if (disabled) {
+      return;
+    }
     const next = { ...selections };
     event.candidateSlotsUtc.forEach((slot) => {
       const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: event.timezone }).format(new Date(slot)));
@@ -59,17 +68,19 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
             key={option.key}
             type="button"
             className={`btn option-toggle ${activeWeight === option.weight ? "is-active" : ""}`}
+            aria-pressed={activeWeight === option.weight}
+            disabled={disabled}
             onClick={() => setActiveWeight(option.weight)}
           >
             {copy.availability[option.key]}
           </button>
         ))}
 
-        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" onClick={markEvenings}>
+        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={markEvenings}>
           {copy.grid.markEvenings}
         </button>
 
-        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" onClick={clearAll}>
+        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={clearAll}>
           {copy.grid.clear}
         </button>
       </div>
@@ -81,7 +92,7 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
         onTouchMove={handleTouchMove}
         onTouchEnd={() => setDragging(false)}
       >
-        <div className="grid gap-2 sm:gap-3" style={{ ...gridStyle, touchAction: "none" }}>
+        <div className="grid gap-2 sm:gap-3" style={{ ...gridStyle, touchAction: disabled ? "auto" : "none" }}>
           {columns.map((column) => (
             <div key={column.date} className="day-column space-y-2">
               <div className="day-label">
@@ -98,6 +109,8 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
                     data-slot={slot}
                     data-state={option?.key || "no"}
                     className="btn slot-button text-sm"
+                    aria-pressed={Object.prototype.hasOwnProperty.call(selections, slot)}
+                    disabled={disabled}
                     onMouseDown={() => {
                       setDragging(true);
                       applyWeight(slot);

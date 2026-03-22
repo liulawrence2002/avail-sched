@@ -5,13 +5,15 @@ import EventPage from "./pages/EventPage";
 import ResultsPage from "./pages/ResultsPage";
 import HostPage from "./pages/HostPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Footer from "./components/Footer";
 import { useMode } from "./useMode";
 
 export default function App() {
   const { mode, toggleMode, copy } = useMode();
-  const headerLabel = mode === "goblin" ? "Premium planning for gentle chaos" : "Thoughtful group availability";
+  const headerLabel = mode === "goblin" ? "Reliable scheduling with optional cave moss" : "Scheduling that feels ready to share";
 
   return (
     <div className={`app-shell flex min-h-screen flex-col ${mode === "goblin" ? "theme-goblin" : "theme-serious"}`}>
@@ -34,7 +36,7 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <Link className="btn btn-secondary hidden rounded-full px-4 py-2 text-sm font-semibold sm:inline-flex" to="/create">
-                Create
+                Create Event
               </Link>
               <button className="btn btn-tonal rounded-full px-4 py-2 text-sm font-semibold" onClick={toggleMode}>
                 {copy.toggle}
@@ -53,6 +55,8 @@ export default function App() {
               <Route path="/e/:publicId" element={<EventPage copy={copy} mode={mode} />} />
               <Route path="/e/:publicId/results" element={<ResultsPage copy={copy} mode={mode} />} />
               <Route path="/host/:hostToken" element={<HostPage copy={copy} mode={mode} />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFoundPage mode={mode} />} />
             </Routes>
           </div>

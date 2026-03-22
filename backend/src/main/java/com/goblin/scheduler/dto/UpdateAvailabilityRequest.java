@@ -1,9 +1,8 @@
 package com.goblin.scheduler.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-public record UpdateAvailabilityRequest(@Valid @NotEmpty List<AvailabilityItem> items) {}
-
+public record UpdateAvailabilityRequest(@Valid @NotNull List<AvailabilityItem> items) {}

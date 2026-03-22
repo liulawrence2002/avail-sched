@@ -22,12 +22,10 @@ public class FinalSelectionRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public FinalSelection upsert(long eventId, Instant slotStartUtc) {
+    public FinalSelection save(long eventId, Instant slotStartUtc) {
         jdbcTemplate.update("""
             insert into final_selection (event_id, slot_start_utc, finalized_at)
             values (?, ?, now())
-            on conflict (event_id) do update
-            set slot_start_utc = excluded.slot_start_utc, finalized_at = now()
             """, eventId, Timestamp.from(slotStartUtc));
         return findByEventId(eventId).orElseThrow();
     }
@@ -36,4 +34,3 @@ public class FinalSelectionRepository {
         return jdbcTemplate.query("select * from final_selection where event_id = ?", mapper, eventId).stream().findFirst();
     }
 }
-
