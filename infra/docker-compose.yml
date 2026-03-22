@@ -17,6 +17,7 @@ services:
       retries: 5
 
   backend:
+    profiles: [fullstack]
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -25,10 +26,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-goblin_sched}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-goblin}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-goblin}
-      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
-      APP_BASE_URL: http://localhost:3000
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3001}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,14 +41,15 @@ services:
       start_period: 30s
 
   frontend:
+    profiles: [fullstack]
     build:
       context: ../frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8080/api
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: goblin-frontend
     ports:
-      - "3000:80"
+      - "3001:80"
     depends_on:
       backend:
         condition: service_healthy

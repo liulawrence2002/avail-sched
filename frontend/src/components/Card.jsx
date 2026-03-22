@@ -1,4 +1,14 @@
-export default function Card({ children, className = "" }) {
-  return <div className={`rounded-[28px] border border-black/10 bg-white/80 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] ${className}`}>{children}</div>;
-}
+const variants = {
+  default: "surface-card",
+  strong: "surface-card surface-strong",
+  ghost: "surface-card surface-ghost",
+  outline: "surface-card surface-outline",
+};
 
+export default function Card({ children, className = "", variant = "default", as: Tag = "div", ...props }) {
+  return (
+    <Tag className={`${variants[variant] || variants.default} p-6 md:p-8 ${className}`.trim()} {...props}>
+      {children}
+    </Tag>
+  );
+}

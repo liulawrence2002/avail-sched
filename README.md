@@ -4,116 +4,101 @@
 
 Free-tier-friendly group availability scheduler with a goofy toggleable UI ("Goblin Mode" vs "Serious Mode").
 
-## Current State (MVP)
+## Current State
 
-The application is a **fully functional MVP**. All core scheduling workflows are implemented end-to-end:
+The application is a functional MVP with the core scheduling flow implemented end to end:
 
-- **Event creation** with configurable duration, slot granularity, date range, and daily time windows
-- **Token-based access** — no login required; hosts and participants use secure random URL tokens
-- **Availability voting** with weighted preferences (Yes / Maybe / Snacks / No)
-- **Scoring engine** that ranks the top 5 time slots across all participants
-- **Host finalization** of a chosen slot with ICS calendar file export
-- **Analytics** tracking view count and response count per event
-- **Rate limiting** (120 req/60s per IP per endpoint)
-- **Theme toggle** between fun "Goblin Mode" and professional "Serious Mode" (persisted in localStorage)
+- Event creation with configurable duration, slot granularity, date range, and daily time windows
+- Token-based access with no accounts required
+- Availability voting with weighted preferences (Yes / Maybe / Snacks / No)
+- Result scoring that ranks the top 5 time slots
+- Host finalization plus ICS calendar export
+- Basic analytics for event views and responses
+- Simple per-IP rate limiting
+- Theme toggle between Goblin and Serious modes
 
 ## Tech Stack
 
-| Layer        | Technology                                          |
-|--------------|-----------------------------------------------------|
-| Frontend     | React 18 + Vite 5 + TailwindCSS 3 + React Router 6 |
-| Backend      | Spring Boot 3.3 + Java 21 + Gradle                  |
-| Database     | PostgreSQL 16 + Flyway migrations                   |
-| Local Infra  | Docker Compose (Postgres)                            |
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18 + Vite 5 + TailwindCSS 3 + React Router 6 |
+| Backend | Spring Boot 3.3 + Java 21 + Gradle |
+| Database | PostgreSQL 16 + Flyway |
+| Local Infra | Docker Compose |
 
 ## Repo Layout
 
-```
+```text
 avail-sched/
-├── backend/          Spring Boot REST API
-│   ├── src/main/java/com/goblin/scheduler/
-│   │   ├── config/       AppConfig, AppProperties (CORS, cache, rate-limit)
-│   │   ├── dto/          Request/response records (11 files)
-│   │   ├── model/        Domain records: Event, Participant, AvailabilityRecord, FinalSelection, EventStats
-│   │   ├── repo/         JdbcTemplate repositories (5 files)
-│   │   ├── service/      EventService, SlotService, ScoringService, ResultCache
-│   │   ├── util/         TokenGenerator (secure random tokens)
-│   │   └── web/          EventController, ApiExceptionHandler, RateLimitFilter
-│   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   └── db/migration/V1__init.sql
-│   └── src/test/         ScoringServiceTest, SlotServiceTest
-├── frontend/         React SPA
-│   └── src/
-│       ├── pages/        LandingPage, CreatePage, EventPage, ResultsPage, HostPage, NotFoundPage
-│       ├── components/   Card, TimeGrid, Footer, CopyButton, ErrorBoundary
-│       ├── api.js        Axios-free fetch client
-│       ├── analytics.js  Analytics stub (swap in Plausible/PostHog/gtag)
-│       ├── utils.js      Slot formatting, grid building
-│       ├── useMode.js    Theme toggle hook
-│       └── styles.css    Tailwind + custom theme styles
-├── infra/
-│   ├── docker-compose.yml   Full-stack (Postgres + Backend + Frontend)
-│   └── .env.example
-└── README.md
+|-- backend/   Spring Boot REST API
+|-- frontend/  React SPA
+|-- infra/     Docker Compose and local env examples
+`-- README.md
 ```
 
 ## API Endpoints
 
-| Method | Path                                                | Auth        | Description                |
-|--------|-----------------------------------------------------|-------------|----------------------------|
-| POST   | `/api/events`                                       | None        | Create event               |
-| GET    | `/api/events/{publicId}`                             | None        | Get event details          |
-| POST   | `/api/events/{publicId}/participants`                | None        | Join event                 |
-| PUT    | `/api/events/{publicId}/participants/{token}/availability` | Participant token | Save availability   |
-| GET    | `/api/events/{publicId}/results`                     | None        | Get scored results (cached 30s) |
-| POST   | `/api/events/{publicId}/finalize?hostToken=...`      | Host token  | Finalize a slot            |
-| GET    | `/api/events/{publicId}/final`                       | None        | Get finalized slot         |
-| GET    | `/api/events/{publicId}/final.ics`                   | None        | Download ICS calendar file |
-| GET    | `/api/host/{hostToken}`                              | Host token  | Get event by host token    |
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/events` | None | Create event |
+| GET | `/api/events/{publicId}` | None | Get event details |
+| POST | `/api/events/{publicId}/participants` | None | Join event |
+| PUT | `/api/events/{publicId}/participants/{token}/availability` | Participant token | Save availability |
+| GET | `/api/events/{publicId}/results` | None | Get scored results |
+| POST | `/api/events/{publicId}/finalize?hostToken=...` | Host token | Finalize a slot |
+| GET | `/api/events/{publicId}/final` | None | Get finalized slot |
+| GET | `/api/events/{publicId}/final.ics` | None | Download ICS file |
+| GET | `/api/host/{hostToken}` | Host token | Get event by host token |
 
-## API Documentation
+## API Docs
 
-Interactive API documentation is available via Swagger UI:
+- Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- OpenAPI spec: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
 
-- **Swagger UI:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- **OpenAPI spec:** [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+When the full Docker stack is running, the frontend container also proxies docs through:
+
+- [http://localhost:3001/swagger-ui.html](http://localhost:3001/swagger-ui.html)
+- [http://localhost:3001/api-docs](http://localhost:3001/api-docs)
 
 ## Database Schema
 
-Five tables managed by Flyway (`V1__init.sql`):
+Flyway manages five tables in `backend/src/main/resources/db/migration/V1__init.sql`:
 
-- **events** — event metadata (title, timezone, dates, slot config, public ID, host token)
-- **participants** — display name + unique token per event
-- **availability** — per-participant slot weights (1.0=yes, 0.6=maybe, 0.3=bribe, 0.0=no)
-- **final_selection** — one finalized slot per event
-- **event_stats** — view and response counters
+- `events` - event metadata plus public and host tokens
+- `participants` - participant name and token per event
+- `availability` - per-slot vote weights
+- `final_selection` - the host-selected winning slot
+- `event_stats` - view and response counters
 
 ## Scoring Algorithm
 
-1. Generate all candidate slots from the event's date range, daily time window, and timezone
-2. For each candidate slot, collect sub-slots based on duration (e.g., a 60-min event with 30-min granularity = 2 sub-slots)
-3. Average each participant's weights across sub-slots to get a per-participant score
-4. Categorize: yes (≥0.99), maybe (≥0.59), bribe (≥0.29), no (<0.29)
-5. Sum scores across participants, return top 5 slots sorted by score descending
+1. Generate candidate slots from the event date range, daily window, slot size, and timezone.
+2. Expand each candidate slot into sub-slots based on the event duration.
+3. Average each participant's weights across the required sub-slots.
+4. Categorize the result as yes, maybe, snacks, or no.
+5. Sum participant scores and return the top 5 slots by score.
 
 ## Local Setup
 
-### 1. Start Postgres
+Two local workflows are supported. Pick one and stick to it for a session so you do not fight over port `8080`.
 
-Make sure Docker Desktop is running first. On Windows, if the Docker daemon is stopped, `docker compose` fails with a `//./pipe/docker_engine` error before it ever reads your service config.
+### Option A. Hybrid dev
 
-```bash
-docker compose -f infra/docker-compose.yml up
-```
+Run Postgres in Docker, but keep the backend and frontend local.
 
-If you want to override the default Postgres settings, copy `infra/.env.example` to `infra/.env` and run:
+1. Start Postgres only:
 
 ```bash
-docker compose --env-file infra/.env -f infra/docker-compose.yml up
+docker compose -f infra/docker-compose.yml up -d postgres
 ```
 
-### 2. Run backend
+If you want to override the defaults, copy `infra/.env.example` to `infra/.env` and run:
+
+```bash
+docker compose --env-file infra/.env -f infra/docker-compose.yml up -d postgres
+```
+
+2. Run the backend:
 
 ```bash
 cd backend
@@ -127,7 +112,7 @@ cd backend
 .\gradlew.bat bootRun
 ```
 
-### 3. Run frontend
+3. Run the frontend:
 
 ```bash
 cd frontend
@@ -135,28 +120,41 @@ npm install
 npm run dev
 ```
 
-The frontend defaults to `http://localhost:8080/api`. The dev server runs at `http://localhost:5173`.
+The Vite dev server runs at `http://localhost:5173`. By default the frontend uses same-origin `/api`, and Vite proxies API, Swagger, and OpenAPI requests to `http://localhost:8080`.
 
-## Docker (Full Stack)
+### Option B. Full stack Docker
 
-Run the entire stack (Postgres + Backend + Frontend) with a single command:
+Run Postgres, backend, and frontend together:
 
 ```bash
-docker compose -f infra/docker-compose.yml up --build
+docker compose -f infra/docker-compose.yml --profile fullstack up --build
 ```
 
 Services:
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:8080
-- **Swagger UI:** http://localhost:8080/swagger-ui.html
-- **Health check:** http://localhost:8080/actuator/health
+
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:8080
+- Health check: http://localhost:8080/actuator/health
+- Frontend-routed API/docs: `http://localhost:3001/api`, `http://localhost:3001/api-docs`, `http://localhost:3001/swagger-ui.html`
 
 ## Environment
 
-- Copy `infra/.env.example` to `infra/.env` and pass it with `--env-file infra/.env` if you want to override the local DB defaults.
+- Copy `infra/.env.example` to `infra/.env` and pass it with `--env-file infra/.env` if you want to override local DB or Docker full-stack URLs.
 - Copy `backend/.env.example` values into your deploy platform environment.
-- Copy `frontend/.env.example` to `frontend/.env.local` for local frontend overrides.
-- `APP_BASE_URL` should point at the frontend app URL (e.g., `http://localhost:5173` locally) because the backend returns host links meant for the UI.
+- Copy `frontend/.env.example` to `frontend/.env.local` only if you need to override the default same-origin `/api` behavior.
+- `APP_BASE_URL` should point at the frontend URL because the backend returns host links meant for the UI.
+  - Hybrid local dev: `http://localhost:5173`
+  - Full stack Docker: `http://localhost:3001`
+- `BACKEND_PORT` controls the Docker backend host port and defaults to `8080`.
+- `VITE_API_BASE_URL` is optional. Leave it as `/api` for same-origin local and Docker use, or point it at a separate backend origin for split frontend/backend deploys.
+
+## Troubleshooting
+
+- If `./gradlew bootRun` fails with `Port 8080 is already in use`, you likely started the full Docker stack. Stop the Docker backend or use the hybrid flow and start only `postgres`.
+- If `docker compose` fails because `0.0.0.0:8080` is unavailable, a local backend is already listening on that port. Stop `bootRun` or set `BACKEND_PORT` in `infra/.env` and pass `--env-file infra/.env` when starting the full stack.
+- If `docker compose` fails before it reads the service config on Windows, Docker Desktop is not fully available yet. Start Docker Desktop and wait until the engine is healthy.
+- If generated host links point at the wrong site, set `APP_BASE_URL` before starting the backend process or container.
+- If the frontend loads but API calls fail, confirm whether you are using the default same-origin `/api` path or an explicit `VITE_API_BASE_URL` override.
 
 ## Deploy
 
@@ -166,19 +164,19 @@ Services:
 2. Set root directory to `frontend`.
 3. Build command: `npm run build`
 4. Output directory: `dist`
-5. Set `VITE_API_BASE_URL` to your backend URL (e.g., `https://goblin-api.onrender.com/api`).
+5. Set `VITE_API_BASE_URL` to your backend URL when deploying to a separate backend origin.
 
 ### Backend on Render
 
-1. Create a PostgreSQL database on Neon or Supabase (free tier).
-2. Create a Render Web Service from this repo with root directory `backend`.
+1. Create a PostgreSQL database on Neon or Supabase.
+2. Create a Render web service from this repo with root directory `backend`.
 3. Build command: `./gradlew build`
 4. Start command: `./gradlew bootRun`
-5. Set env vars: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `APP_CORS_ALLOWED_ORIGINS`, `APP_BASE_URL`.
+5. Set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `APP_CORS_ALLOWED_ORIGINS`, and `APP_BASE_URL`.
 
 ### Backend on Fly.io
 
-1. Provision a free PostgreSQL-compatible database (e.g., Neon).
+1. Provision a PostgreSQL-compatible database.
 2. Deploy the `backend` directory as a Java app.
 3. Set the same env vars as Render.
 
@@ -190,55 +188,50 @@ Services:
 
 ## Key Architecture Decisions
 
-- **No ORM** — JdbcTemplate with explicit SQL for a lean MVP
-- **No auth provider** — secure random tokens (32-byte URL-safe Base64) for host/participant access
-- **Stateless API** — no server-side sessions
-- **In-memory result cache** — 30-second TTL per event, evicted on availability update
-- **UTC storage** — all availability timestamps stored as UTC instants, converted to event timezone for display
-- **PostgreSQL only** — no multi-DB abstractions; targets free-tier managed services
+- No ORM: JdbcTemplate with explicit SQL keeps the backend lean.
+- No auth provider: secure random tokens gate host and participant access.
+- Stateless API: no server-side sessions.
+- In-memory result cache: short TTL and explicit eviction on vote updates.
+- UTC storage: slot timestamps are stored as UTC instants and rendered in the event timezone.
+- PostgreSQL only: the app targets a single, production-like database engine.
 
 ## Tests
 
-Two unit test classes exist:
+Backend and frontend checks now cover both fast local feedback and Docker wiring:
 
-- `ScoringServiceTest` — validates weighted scoring and sub-slot aggregation
-- `SlotServiceTest` — validates candidate slot generation and timezone handling
+- `cd backend && ./gradlew test` - unit and slice tests
+- `cd backend && ./gradlew integrationTest` - PostgreSQL-backed event lifecycle integration test
+- `cd frontend && npm run build` - production frontend build
+- CI also runs a Docker Compose smoke test for the full stack (`--profile fullstack`)
 
-## What Still Needs to Be Done
+## What Still Needs To Be Done
 
 ### High Priority
 
-- [ ] **Integration / E2E tests** — no controller, repository, or end-to-end tests exist; only two unit tests cover `ScoringService` and `SlotService`
-- [ ] **Input sanitization** — display names and event titles are rendered as-is; add XSS protection on the frontend
-- [x] **Error boundaries** — React error boundary component wraps all routes
-- [x] **Mobile responsiveness** — TimeGrid supports touch events for drag-to-select on mobile
-- [ ] **HTTPS enforcement** — no TLS configuration or redirect-to-HTTPS logic (relies on deploy platform)
+- [ ] Browser E2E tests - no Playwright/Cypress coverage for real browser flows yet
+- [ ] Input sanitization - frontend rendering still relies mostly on React escaping and backend stripping
+- [ ] HTTPS enforcement - still delegated to the deployment platform
 
 ### Medium Priority
 
-- [ ] **Edit event after creation** — hosts cannot modify title, dates, or time windows after event creation
-- [ ] **Edit participant name** — participants cannot change their display name
-- [ ] **Delete event** — no endpoint or UI for event deletion / expiry
-- [ ] **Event expiry / TTL** — old events live forever in the database with no cleanup
-- [ ] **Re-finalization guard** — hosts can overwrite a finalized slot with no confirmation or undo
-- [ ] **Loading / skeleton states** — pages show raw loading text; no skeleton UI or spinners
-- [ ] **Accessibility (a11y)** — no ARIA labels, keyboard navigation for the time grid, or screen reader support
+- [ ] Edit event after creation
+- [ ] Edit participant name
+- [ ] Delete event
+- [ ] Event expiry / cleanup
+- [ ] Re-finalization guard
+- [ ] Better loading and skeleton states
+- [ ] Accessibility improvements for keyboard and screen reader use
 
-### Low Priority / Nice to Have
+### Low Priority
 
-- [ ] **Email / notification support** — no way to notify participants of finalization (by design for free tier, but a natural next step)
-- [ ] **Participant list page** — results show who can/cannot attend, but there's no dedicated participant management view
-- [ ] **Bulk export** — no way to export all availability data (CSV, etc.)
-- [ ] **Event search / directory** — events are only accessible via direct link
-- [ ] **Timezone auto-detection** — create form doesn't pre-select the user's local timezone
-- [x] **Copy-to-clipboard** — copy buttons on share links for host and participant URLs
-- [x] **CI/CD pipeline** — GitHub Actions CI with backend tests and frontend build
-- [x] **Dockerfile for backend** — multi-stage Docker build for Spring Boot app
-- [ ] **Production logging** — no structured logging or log level configuration beyond Spring defaults
-- [x] **Metrics / observability** — Spring Boot Actuator with health, info, and metrics endpoints
+- [ ] Email / notification support
+- [ ] Participant management page
+- [ ] Bulk export
+- [ ] Event search / directory
+- [ ] Structured production logging beyond Spring defaults
 
 ## Free-Tier Notes
 
-- No Stripe, Auth0, SendGrid, or third-party analytics.
-- ICS downloads are generated server-side with no calendar integration.
-- Host/participant links are bearer secrets — share carefully.
+- No Stripe, Auth0, SendGrid, or hosted analytics dependencies are required.
+- ICS downloads are generated server-side with no third-party calendar integration.
+- Host and participant links are bearer secrets and should be shared carefully.

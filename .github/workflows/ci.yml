@@ -33,7 +33,7 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
-      - run: ./gradlew test
+      - run: ./gradlew test integrationTest
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/goblin_sched
           SPRING_DATASOURCE_USERNAME: goblin
@@ -53,3 +53,25 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start full stack
+        run: docker compose -f infra/docker-compose.yml --profile fullstack up --build -d
+      - name: Wait for backend health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/actuator/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose -f infra/docker-compose.yml --profile fullstack logs backend
+          exit 1
+      - name: Check frontend landing page
+        run: curl -fsS http://localhost:3001 | grep -q "Goblin Scheduler"
+      - name: Stop full stack
+        if: always()
+        run: docker compose -f infra/docker-compose.yml --profile fullstack down -v

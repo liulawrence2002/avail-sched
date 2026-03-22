@@ -1,11 +1,13 @@
 backend/.gradle/
 backend/build/
+.gradle-cache/
 frontend/node_modules/
 frontend/dist/
 .idea/
 .vscode/
 .DS_Store
 *.log
+*.pid
 .env
 backend/.env
 frontend/.env.local

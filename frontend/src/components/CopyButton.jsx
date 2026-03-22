@@ -7,7 +7,6 @@ export default function CopyButton({ text }) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      // Fallback for older browsers / insecure contexts
       const textarea = document.createElement("textarea");
       textarea.value = text;
       textarea.style.position = "fixed";
@@ -17,13 +16,14 @@ export default function CopyButton({ text }) {
       document.execCommand("copy");
       document.body.removeChild(textarea);
     }
+
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <button type="button" className="btn rounded-full border px-3 py-1 text-xs font-semibold" onClick={handleCopy}>
-      {copied ? "Copied!" : "Copy"}
+    <button type="button" className="btn btn-copy px-3 py-2 text-xs font-semibold" onClick={handleCopy}>
+      {copied ? "Copied" : "Copy link"}
     </button>
   );
 }

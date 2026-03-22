@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { AVAILABILITY_OPTIONS, buildGrid, formatInstant } from "../utils";
 
 export default function TimeGrid({ event, selections, onChange, copy }) {
-  const columns = useMemo(() => buildGrid(event.candidateSlotsUtc, event.timezone), [event]);
+  const columns = useMemo(() => buildGrid(event.candidateSlotsUtc, event.timezone), [event.candidateSlotsUtc, event.timezone]);
   const [activeWeight, setActiveWeight] = useState(1.0);
   const [dragging, setDragging] = useState(false);
   const selectionsRef = useRef(selections);
@@ -34,9 +34,9 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
     if (!dragging) return;
     const touch = e.touches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const slotBtn = el?.closest("[data-slot]");
-    if (slotBtn) {
-      applyWeight(slotBtn.dataset.slot);
+    const slotButton = el?.closest("[data-slot]");
+    if (slotButton) {
+      applyWeight(slotButton.dataset.slot);
     }
   }
 
@@ -44,6 +44,7 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
     if (columns.length <= 2) {
       return { gridTemplateColumns: `repeat(${columns.length}, 1fr)` };
     }
+
     return {
       gridTemplateColumns: `repeat(${columns.length}, minmax(120px, 1fr))`,
       minWidth: `${columns.length * 120}px`,
@@ -57,21 +58,24 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
           <button
             key={option.key}
             type="button"
-            className={`btn rounded-full border px-3 py-2 text-sm font-semibold ${activeWeight === option.weight ? "border-black bg-black text-white" : "bg-white"}`}
+            className={`btn option-toggle ${activeWeight === option.weight ? "is-active" : ""}`}
             onClick={() => setActiveWeight(option.weight)}
           >
             {copy.availability[option.key]}
           </button>
         ))}
-        <button type="button" className="btn rounded-full border px-3 py-2 text-sm" onClick={markEvenings}>
+
+        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" onClick={markEvenings}>
           {copy.grid.markEvenings}
         </button>
-        <button type="button" className="btn rounded-full border px-3 py-2 text-sm" onClick={clearAll}>
+
+        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" onClick={clearAll}>
           {copy.grid.clear}
         </button>
       </div>
+
       <div
-        className="overflow-x-auto rounded-[28px] border border-black/10 bg-white/70 p-2 sm:p-3"
+        className="grid-shell"
         onMouseUp={() => setDragging(false)}
         onMouseLeave={() => setDragging(false)}
         onTouchMove={handleTouchMove}
@@ -79,8 +83,12 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
       >
         <div className="grid gap-2 sm:gap-3" style={{ ...gridStyle, touchAction: "none" }}>
           {columns.map((column) => (
-            <div key={column.date} className="space-y-2">
-              <div className="sticky top-0 rounded-2xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white">{column.date}</div>
+            <div key={column.date} className="day-column space-y-2">
+              <div className="day-label">
+                <div className="day-title">{column.title}</div>
+                <div className="day-subtitle">{column.subtitle}</div>
+              </div>
+
               {column.slots.map((slot) => {
                 const option = AVAILABILITY_OPTIONS.find((item) => item.weight === (selections[slot] ?? 0));
                 return (
@@ -88,7 +96,8 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
                     key={slot}
                     type="button"
                     data-slot={slot}
-                    className={`block w-full rounded-2xl border px-3 py-3 text-left text-sm ${option?.color || "bg-white"}`}
+                    data-state={option?.key || "no"}
+                    className="btn slot-button text-sm"
                     onMouseDown={() => {
                       setDragging(true);
                       applyWeight(slot);
@@ -101,8 +110,8 @@ export default function TimeGrid({ event, selections, onChange, copy }) {
                       applyWeight(slot);
                     }}
                   >
-                    <div className="font-semibold">{formatInstant(slot, event.timezone)}</div>
-                    <div className="text-xs opacity-70">{option ? copy.availability[option.key] : copy.availability.no}</div>
+                    <div className="slot-label">{formatInstant(slot, event.timezone)}</div>
+                    <div className="slot-meta">{option ? copy.availability[option.key] : copy.availability.no}</div>
                   </button>
                 );
               })}

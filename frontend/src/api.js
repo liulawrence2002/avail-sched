@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -11,7 +11,16 @@ async function request(path, options = {}) {
   const contentType = response.headers.get("content-type") || "";
   const data = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
-    throw new Error(data.message || "Request failed");
+    const message =
+      typeof data === "object" && data !== null
+        ? data.message || "Request failed"
+        : typeof data === "string" && data
+          ? data
+          : "Request failed";
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
   return data;
 }
@@ -29,4 +38,3 @@ export const api = {
   getFinal: (publicId) => request(`/events/${publicId}/final`),
   icsUrl: (publicId) => `${API_BASE}/events/${publicId}/final.ics`,
 };
-

@@ -3,11 +3,25 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import Card from "../components/Card";
 import CopyButton from "../components/CopyButton";
+import StatusBanner from "../components/StatusBanner";
 import TimeGrid from "../components/TimeGrid";
 import { t } from "../utils";
 import { track } from "../analytics";
 
-export default function EventPage({ copy }) {
+const EVENT_DETAILS = {
+  serious: {
+    label: "Shared event page",
+    joinNote: "Guests can join with a name only. No account wall, no extra setup.",
+    gridNote: "Tap or drag across the schedule to paint availability. Your latest save becomes the current response.",
+  },
+  goblin: {
+    label: "Shared quest page",
+    joinNote: "Guests can join with a name only. No account wall, no ceremonial paperwork.",
+    gridNote: "Tap or drag across the schedule to paint availability. Save when your goblin instincts feel right.",
+  },
+};
+
+export default function EventPage({ copy, mode }) {
   const { publicId } = useParams();
   const [event, setEvent] = useState(null);
   const [displayName, setDisplayName] = useState("");
@@ -15,6 +29,7 @@ export default function EventPage({ copy }) {
   const [selections, setSelections] = useState({});
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const details = EVENT_DETAILS[mode];
 
   useEffect(() => {
     api.getEvent(publicId).then(setEvent).catch((err) => setError(err.message));
@@ -49,64 +64,122 @@ export default function EventPage({ copy }) {
   }
 
   if (!event) {
-    return <p>{error || copy.event.loading}</p>;
+    return (
+      <div className="loading-shell">
+        <Card variant="strong" className="max-w-2xl text-center">
+          <span className="eyebrow">{details.label}</span>
+          <p className="section-kicker mx-auto">{error || copy.event.loading}</p>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Card className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black">{event.title}</h1>
-            <p className="mt-2 text-slate-700">{event.description || copy.event.noDescription}</p>
+      <section className="surface-card surface-strong overflow-hidden px-6 py-8 md:px-8 md:py-10">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-end">
+          <div className="space-y-5">
+            <span className="eyebrow">{details.label}</span>
+            <div className="space-y-4">
+              <h1 className="display-title display-title-lg">{event.title}</h1>
+              <p className="section-kicker">{event.description || copy.event.noDescription}</p>
+            </div>
+
+            <div className="pill-row">
+              <span className="meta-pill">Timezone {event.timezone}</span>
+              <span className="meta-pill">Duration {event.durationMinutes} min</span>
+              <span className="meta-pill">Views {event.stats.viewCount}</span>
+              <span className="meta-pill">Responses {event.stats.responseCount}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <CopyButton text={shareLink} />
-            <Link className="btn rounded-full border px-4 py-2 text-sm font-semibold" to={`/e/${publicId}/results`}>
-              {copy.event.viewResults}
-            </Link>
+
+          <div className="grid gap-4">
+            <Card variant="ghost" className="space-y-3 p-5 md:p-6">
+              <p className="detail-label">Share this event</p>
+              <p className="break-all text-sm font-semibold leading-7 text-[var(--text)]">{shareLink}</p>
+              <div className="flex flex-wrap gap-2">
+                <CopyButton text={shareLink} />
+                <Link className="btn btn-secondary rounded-full px-4 py-2 text-sm font-semibold" to={`/e/${publicId}/results`}>
+                  {copy.event.viewResults}
+                </Link>
+              </div>
+            </Card>
+
+            <Card variant="ghost" className="space-y-2 p-5 md:p-6">
+              <p className="detail-label">Participant experience</p>
+              <p className="text-sm leading-7 text-[var(--muted)]">{details.joinNote}</p>
+            </Card>
           </div>
         </div>
-        <p className="text-sm text-slate-600">
-          Timezone: {event.timezone} • Duration: {event.durationMinutes} minutes • Views: {event.stats.viewCount} • Responses: {event.stats.responseCount}
-        </p>
-      </Card>
+      </section>
 
       {event.finalSelection ? (
-        <Card className="space-y-2">
-          <h2 className="text-xl font-black">{copy.event.finalizedTitle}</h2>
-          <p className="text-slate-700">{new Intl.DateTimeFormat(undefined, {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            timeZone: event.timezone,
-          }).format(new Date(event.finalSelection.slotStartUtc))}</p>
-          <a className="btn inline-flex rounded-full border px-4 py-2 text-sm font-semibold" href={api.icsUrl(publicId)}>
+        <Card className="space-y-4">
+          <span className="eyebrow">{copy.event.finalizedTitle}</span>
+          <div className="grid gap-4 md:grid-cols-[1fr,auto] md:items-end">
+            <div>
+              <div className="display-title text-[2.2rem] leading-none">
+                {new Intl.DateTimeFormat(undefined, {
+                  weekday: "long",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: event.timezone,
+                }).format(new Date(event.finalSelection.slotStartUtc))}
+              </div>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">The host has already finalized this time, so guests can move straight into calendar mode.</p>
+            </div>
+          </div>
+          <a className="btn btn-secondary inline-flex rounded-full px-4 py-2 text-sm font-semibold" href={api.icsUrl(publicId)}>
             {copy.event.downloadCal}
           </a>
         </Card>
       ) : null}
 
       {!token ? (
-        <Card className="space-y-4">
-          <h2 className="text-xl font-black">{copy.event.joinTitle}</h2>
-          <input className="input max-w-md" placeholder={copy.event.joinPlaceholder} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          <button className="btn rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white" onClick={handleJoin}>
-            {copy.event.joinButton}
-          </button>
-        </Card>
+        <section className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
+          <Card className="space-y-4">
+            <span className="eyebrow">{copy.event.joinTitle}</span>
+            <h2 className="display-title text-[2.2rem] leading-none">Add your name and step inside.</h2>
+            <p className="text-sm leading-7 text-[var(--muted)]">{details.joinNote}</p>
+            <input className="input max-w-md" placeholder={copy.event.joinPlaceholder} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <button className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold" onClick={handleJoin}>
+              {copy.event.joinButton}
+            </button>
+          </Card>
+
+          <Card variant="ghost" className="space-y-4">
+            <span className="eyebrow">What happens next</span>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="list-number">1</span>
+                <p className="pt-1 text-sm leading-7 text-[var(--text)]">Join once with a display name.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="list-number">2</span>
+                <p className="pt-1 text-sm leading-7 text-[var(--text)]">Tap or drag across the schedule to mark availability.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="list-number">3</span>
+                <p className="pt-1 text-sm leading-7 text-[var(--text)]">Save your response and come back any time to revise it.</p>
+              </div>
+            </div>
+          </Card>
+        </section>
       ) : null}
 
       {token ? (
         <Card className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-black">{copy.event.availTitle}</h2>
-              <p className="text-sm text-slate-600">{t(copy.event.availCount, { count: filledCount })}</p>
+              <span className="eyebrow">{copy.event.availTitle}</span>
+              <h2 className="display-title mt-3 text-[2.2rem] leading-none">Paint your best windows.</h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                {t(copy.event.availCount, { count: filledCount })}. {details.gridNote}
+              </p>
             </div>
-            <button className="btn rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white" onClick={handleSave}>
+            <button className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold" onClick={handleSave}>
               {copy.event.saveButton}
             </button>
           </div>
@@ -114,8 +187,8 @@ export default function EventPage({ copy }) {
         </Card>
       ) : null}
 
-      {status ? <p className="rounded-2xl bg-emerald-100 px-4 py-3 text-sm text-emerald-800">{status}</p> : null}
-      {error ? <p className="rounded-2xl bg-rose-100 px-4 py-3 text-sm text-rose-800">{error}</p> : null}
+      {status ? <StatusBanner tone="success">{status}</StatusBanner> : null}
+      {error ? <StatusBanner tone="error">{error}</StatusBanner> : null}
     </div>
   );
 }

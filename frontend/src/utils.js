@@ -1,8 +1,8 @@
 export const AVAILABILITY_OPTIONS = [
-  { key: "yes", weight: 1.0, color: "bg-emerald-400" },
-  { key: "maybe", weight: 0.6, color: "bg-amber-300" },
-  { key: "bribe", weight: 0.3, color: "bg-fuchsia-300" },
-  { key: "no", weight: 0.0, color: "bg-slate-200" },
+  { key: "yes", weight: 1.0 },
+  { key: "maybe", weight: 0.6 },
+  { key: "bribe", weight: 0.3 },
+  { key: "no", weight: 0.0 },
 ];
 
 export function t(template, vars) {
@@ -22,13 +22,35 @@ export function formatInstant(value, timezone) {
 
 export function buildGrid(candidateSlotsUtc, timezone) {
   const grouped = {};
+
   candidateSlotsUtc.forEach((slot) => {
-    const dateKey = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(slot));
-    grouped[dateKey] = grouped[dateKey] || [];
-    grouped[dateKey].push(slot);
+    const date = new Date(slot);
+    const dateKey = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = {
+        date: dateKey,
+        title: new Intl.DateTimeFormat(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: timezone,
+        }).format(date),
+        subtitle: new Intl.DateTimeFormat(undefined, {
+          year: "numeric",
+          timeZone: timezone,
+        }).format(date),
+        slots: [],
+      };
+    }
+
+    grouped[dateKey].slots.push(slot);
   });
-  return Object.entries(grouped).map(([date, slots]) => ({
-    date,
-    slots,
-  }));
+
+  return Object.values(grouped);
 }

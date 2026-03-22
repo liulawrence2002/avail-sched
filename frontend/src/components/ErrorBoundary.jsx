@@ -1,4 +1,5 @@
 import { Component } from "react";
+import Card from "./Card";
 import { COPY } from "../useMode";
 
 export default class ErrorBoundary extends Component {
@@ -21,19 +22,15 @@ export default class ErrorBoundary extends Component {
       const copy = COPY[mode];
 
       return (
-        <div className="mx-auto mt-16 max-w-md rounded-[28px] border border-black/10 bg-white/70 p-8 text-center">
-          <h2 className="mb-2 text-2xl font-black uppercase tracking-wide">
-            {copy.error.title}
-          </h2>
-          <p className="mb-6 text-sm text-black/60">
-            {copy.error.description}
-          </p>
-          <a
-            href="/"
-            className="btn inline-block rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white"
-          >
-            {copy.error.homeButton}
-          </a>
+        <div className="loading-shell">
+          <Card variant="strong" className="max-w-xl text-center">
+            <span className="eyebrow">Application error</span>
+            <h2 className="display-title display-title-lg mt-4 text-[2.7rem]">{copy.error.title}</h2>
+            <p className="section-kicker mx-auto mt-4 max-w-lg">{copy.error.description}</p>
+            <a href="/" className="btn btn-primary mt-8 inline-flex rounded-full px-6 py-3 text-sm font-semibold">
+              {copy.error.homeButton}
+            </a>
+          </Card>
         </div>
       );
     }
