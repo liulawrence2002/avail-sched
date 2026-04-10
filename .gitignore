@@ -3,6 +3,7 @@ backend/build/
 .gradle-cache/
 frontend/node_modules/
 frontend/dist/
+frontend/coverage/
 .idea/
 .vscode/
 .DS_Store
