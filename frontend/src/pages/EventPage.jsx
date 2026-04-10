@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import Card from "../components/Card";
 import CopyButton from "../components/CopyButton";
 import StatusBanner from "../components/StatusBanner";
 import TimeGrid from "../components/TimeGrid";
-import { t } from "../utils";
+import { buildParticipantLink, t } from "../utils";
 import { track } from "../analytics";
 
 const EVENT_DETAILS = {
@@ -35,9 +35,13 @@ const EVENT_DETAILS = {
 
 export default function EventPage({ copy, mode }) {
   const { publicId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [displayName, setDisplayName] = useState("");
+  const [participantEmail, setParticipantEmail] = useState("");
   const [token, setToken] = useState(() => localStorage.getItem(storageKey(publicId)) || "");
+  const [participantLink, setParticipantLink] = useState("");
   const [selections, setSelections] = useState({});
   const [savedSelections, setSavedSelections] = useState({});
   const [status, setStatus] = useState(null);
@@ -50,8 +54,24 @@ export default function EventPage({ copy, mode }) {
 
   useEffect(() => {
     setDisplayName("");
+    setParticipantEmail("");
     setToken(localStorage.getItem(storageKey(publicId)) || "");
+    setParticipantLink("");
   }, [publicId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tokenFromUrl = params.get("token");
+    if (!tokenFromUrl) {
+      return;
+    }
+
+    localStorage.setItem(storageKey(publicId), tokenFromUrl);
+    setToken(tokenFromUrl);
+    setParticipantLink(buildParticipantLink(publicId, tokenFromUrl));
+    setStatus({ tone: "success", message: "Recovered your edit link on this device." });
+    navigate(`/e/${publicId}`, { replace: true });
+  }, [location.search, navigate, publicId]);
 
   useEffect(() => {
     let isActive = true;
@@ -97,8 +117,10 @@ export default function EventPage({ copy, mode }) {
         }
         const nextSelections = itemsToSelections(data.items);
         setDisplayName(data.displayName);
+        setParticipantEmail(data.email || "");
         setSelections(nextSelections);
         setSavedSelections(nextSelections);
+        setParticipantLink(buildParticipantLink(publicId, token));
       })
       .catch(() => {
         if (!isActive) {
@@ -107,6 +129,8 @@ export default function EventPage({ copy, mode }) {
         localStorage.removeItem(storageKey(publicId));
         setToken("");
         setDisplayName("");
+        setParticipantEmail("");
+        setParticipantLink("");
         setStatus({ tone: "info", message: copy.event.sessionExpired });
       })
       .finally(() => {
@@ -123,7 +147,9 @@ export default function EventPage({ copy, mode }) {
   const filledCount = useMemo(() => Object.keys(selections).length, [selections]);
   const hasUnsavedChanges = useMemo(() => !selectionMapsEqual(selections, savedSelections), [savedSelections, selections]);
   const shareLink = `${window.location.origin}/e/${publicId}`;
+  const editLink = participantLink || buildParticipantLink(publicId, token);
   const isFinalized = Boolean(event?.finalSelection);
+  const canViewPublicResults = event?.resultsVisibility !== "host_only";
 
   const selectionSummary = useMemo(() => {
     const counts = {
@@ -155,13 +181,19 @@ export default function EventPage({ copy, mode }) {
     setJoining(true);
     setError("");
     try {
-      const data = await api.joinEvent(publicId, { displayName: trimmedName });
+      const normalizedEmail = participantEmail.trim();
+      const data = await api.joinEvent(publicId, { displayName: trimmedName, email: normalizedEmail || null });
       localStorage.setItem(storageKey(publicId), data.participantToken);
       setDisplayName(trimmedName);
       setSavedSelections({});
       setSelections({});
       setToken(data.participantToken);
-      setStatus({ tone: "success", message: copy.event.joinedStatus });
+      setParticipantEmail(normalizedEmail);
+      setParticipantLink(data.participantLink);
+      setStatus({
+        tone: data.existingParticipant ? "info" : "success",
+        message: data.existingParticipant ? "We found your existing response and reopened it here." : copy.event.joinedStatus,
+      });
       track("event_joined");
     } catch (err) {
       setError(err.message);
@@ -208,46 +240,48 @@ export default function EventPage({ copy, mode }) {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="surface-card surface-strong overflow-hidden px-6 py-8 md:px-8 md:py-10">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-end">
-          <div className="space-y-5">
-            <span className="eyebrow">{details.label}</span>
-            <div className="space-y-4">
-              <h1 className="display-title display-title-lg">{event.title}</h1>
-              <p className="section-kicker">{event.description || copy.event.noDescription}</p>
-            </div>
-
-            <div className="pill-row">
-              <span className="meta-pill">Timezone {event.timezone}</span>
-              <span className="meta-pill">Duration {event.durationMinutes} min</span>
-              <span className="meta-pill">Respondents {event.stats.respondentCount}</span>
-              <span className="meta-pill">Views {event.stats.viewCount}</span>
-            </div>
+    <div className="route-shell route-shell--event space-y-6">
+      <section className="route-hero route-hero--event">
+        <div className="route-hero__copy">
+          <span className="eyebrow">{details.label}</span>
+          <div className="space-y-4">
+            <h1 className="display-title display-title-lg">{event.title}</h1>
+            <p className="section-kicker">{event.description || copy.event.noDescription}</p>
           </div>
 
-          <div className="grid gap-4">
-            <Card variant="ghost" className="space-y-3 p-5 md:p-6">
-              <p className="detail-label">Share this page</p>
-              <p className="break-all text-sm font-semibold leading-7 text-[var(--text)]">{shareLink}</p>
-              <div className="flex flex-wrap gap-2">
-                <CopyButton text={shareLink} />
+          <div className="pill-row">
+            <span className="meta-pill">Timezone {event.timezone}</span>
+            <span className="meta-pill">Duration {event.durationMinutes} min</span>
+            <span className="meta-pill">Respondents {event.stats.respondentCount}</span>
+            <span className="meta-pill">Views {event.stats.viewCount}</span>
+          </div>
+        </div>
+
+        <div className="route-hero__panel">
+          <div className="space-y-3">
+            <p className="detail-label">Share this page</p>
+            <p className="break-all text-sm font-semibold leading-7 text-[var(--text)]">{shareLink}</p>
+            <div className="flex flex-wrap gap-2">
+              <CopyButton text={shareLink} />
+              {canViewPublicResults ? (
                 <Link className="btn btn-secondary rounded-full px-4 py-2 text-sm font-semibold" to={`/e/${publicId}/results`}>
                   {copy.event.viewResults}
                 </Link>
-              </div>
-            </Card>
+              ) : null}
+            </div>
+          </div>
 
-            <Card variant="ghost" className="space-y-2 p-5 md:p-6">
-              <p className="detail-label">Guest experience</p>
-              <p className="text-sm leading-7 text-[var(--muted)]">{details.joinNote}</p>
-            </Card>
+          <div className="route-note-panel">
+            <p className="detail-label">Guest experience</p>
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              {details.joinNote} {canViewPublicResults ? "Guests can still review the aggregate ranking." : "The host kept the ranking private to the host workspace."}
+            </p>
           </div>
         </div>
       </section>
 
       {isFinalized ? (
-        <Card className="space-y-5">
+        <Card className="route-final-panel space-y-5">
           <span className="eyebrow">{copy.event.finalizedTitle}</span>
           <div className="grid gap-5 lg:grid-cols-[1fr,auto] lg:items-end">
             <div className="space-y-3">
@@ -267,16 +301,18 @@ export default function EventPage({ copy, mode }) {
               <a className="btn btn-primary inline-flex rounded-full px-5 py-3 text-sm font-semibold" href={api.icsUrl(publicId)}>
                 {copy.event.downloadCal}
               </a>
-              <Link className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold" to={`/e/${publicId}/results`}>
-                {copy.event.viewResults}
-              </Link>
+              {canViewPublicResults ? (
+                <Link className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold" to={`/e/${publicId}/results`}>
+                  {copy.event.viewResults}
+                </Link>
+              ) : null}
             </div>
           </div>
         </Card>
       ) : null}
 
       {!token && !isFinalized ? (
-        <section className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
+        <section className="route-grid route-grid--event-intro">
           <Card className="space-y-4">
             <span className="eyebrow">{copy.event.joinTitle}</span>
             <h2 className="display-title text-[2.2rem] leading-none">Join the schedule in one step.</h2>
@@ -287,11 +323,18 @@ export default function EventPage({ copy, mode }) {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
+            <input
+              className="input max-w-md"
+              type="email"
+              placeholder="Optional email for easier recovery later"
+              value={participantEmail}
+              onChange={(e) => setParticipantEmail(e.target.value)}
+            />
             <div className="flex flex-wrap items-center gap-3">
               <button className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold" disabled={joining} onClick={handleJoin}>
                 {joining ? "Joining..." : copy.event.joinButton}
               </button>
-              <span className="text-sm text-[var(--muted)]">We keep your editing token on this device so you can come back later.</span>
+              <span className="text-sm text-[var(--muted)]">We keep your editing token on this device, and the optional email helps you recover it more easily later.</span>
             </div>
           </Card>
 
@@ -310,8 +353,8 @@ export default function EventPage({ copy, mode }) {
       ) : null}
 
       {token && !isFinalized ? (
-        <Card className="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <section className="route-grid route-grid--event-response">
+          <Card className="space-y-5">
             <div className="space-y-3">
               <span className="eyebrow">{copy.event.availTitle}</span>
               <h2 className="display-title text-[2.2rem] leading-none">Responding as {displayName || "participant"}.</h2>
@@ -320,53 +363,83 @@ export default function EventPage({ copy, mode }) {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                className="btn btn-secondary rounded-full px-4 py-3 text-sm font-semibold"
-                disabled={!hasUnsavedChanges || hydratingAvailability || saving}
-                onClick={restoreSavedSelections}
-                type="button"
-              >
-                {copy.grid.restore}
-              </button>
-              <button
-                className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold"
-                disabled={hydratingAvailability || saving || !hasUnsavedChanges}
-                onClick={handleSave}
-                type="button"
-              >
-                {saving ? "Saving..." : copy.event.saveButton}
-              </button>
-            </div>
-          </div>
+            {hydratingAvailability ? <StatusBanner tone="info">Loading your saved response...</StatusBanner> : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="metric-pill">
-              <span className="metric-label">Status</span>
-              <span className="metric-value">{hasUnsavedChanges ? "Unsaved changes" : "Saved"}</span>
-              <span className="metric-note">{hasUnsavedChanges ? "Save to update your response." : "Your latest response is stored."}</span>
-            </div>
-            <div className="metric-pill">
-              <span className="metric-label">Works well</span>
-              <span className="metric-value">{selectionSummary.yes}</span>
-              <span className="metric-note">Your strongest blocks.</span>
-            </div>
-            <div className="metric-pill">
-              <span className="metric-label">Can flex</span>
-              <span className="metric-value">{selectionSummary.maybe}</span>
-              <span className="metric-note">Possible with compromise.</span>
-            </div>
-            <div className="metric-pill">
-              <span className="metric-label">Needs effort</span>
-              <span className="metric-value">{selectionSummary.bribe}</span>
-              <span className="metric-note">Only if needed.</span>
-            </div>
-          </div>
+            <TimeGrid event={event} selections={selections} onChange={setSelections} copy={copy} disabled={hydratingAvailability || saving} />
+          </Card>
 
-          {hydratingAvailability ? <StatusBanner tone="info">Loading your saved response...</StatusBanner> : null}
+          <aside className="route-sidebar route-sidebar--sticky">
+            <Card className="event-action-rail space-y-5">
+              <span className="eyebrow">Response status</span>
+              <div className="event-action-rail__headline">
+                <h3 className="display-title text-[2rem] leading-none">{hasUnsavedChanges ? "Unsaved changes" : "Saved and synced"}</h3>
+                <p className="text-sm leading-7 text-[var(--muted)]">
+                  {hasUnsavedChanges ? "Your edits are local until you save them." : "Your latest response is stored on this event."}
+                </p>
+              </div>
 
-          <TimeGrid event={event} selections={selections} onChange={setSelections} copy={copy} disabled={hydratingAvailability || saving} />
-        </Card>
+              <div className="event-stat-grid">
+                <div className="metric-pill">
+                  <span className="metric-label">Marked blocks</span>
+                  <span className="metric-value">{filledCount}</span>
+                  <span className="metric-note">Across the full scheduling window.</span>
+                </div>
+                <div className="metric-pill">
+                  <span className="metric-label">Works well</span>
+                  <span className="metric-value">{selectionSummary.yes}</span>
+                  <span className="metric-note">Your strongest blocks.</span>
+                </div>
+                <div className="metric-pill">
+                  <span className="metric-label">Can flex</span>
+                  <span className="metric-value">{selectionSummary.maybe}</span>
+                  <span className="metric-note">Possible with compromise.</span>
+                </div>
+                <div className="metric-pill">
+                  <span className="metric-label">Needs effort</span>
+                  <span className="metric-value">{selectionSummary.bribe}</span>
+                  <span className="metric-note">Only if needed.</span>
+                </div>
+              </div>
+
+              <div className="event-action-rail__buttons">
+                <button
+                  className="btn btn-secondary rounded-full px-4 py-3 text-sm font-semibold"
+                  disabled={!hasUnsavedChanges || hydratingAvailability || saving}
+                  onClick={restoreSavedSelections}
+                  type="button"
+                >
+                  {copy.grid.restore}
+                </button>
+                <button
+                  className="btn btn-primary rounded-full px-5 py-3 text-sm font-semibold"
+                  disabled={hydratingAvailability || saving || !hasUnsavedChanges}
+                  onClick={handleSave}
+                  type="button"
+                >
+                  {saving ? "Saving..." : copy.event.saveButton}
+                </button>
+              </div>
+
+              <div className="route-note-panel">
+                <p className="detail-label">Edit-anywhere link</p>
+                <p className="break-all text-sm leading-7 text-[var(--muted)]">
+                  Keep this link if you want to recover your response on another device.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <CopyButton text={editLink} />
+                  {participantEmail ? <span className="text-sm text-[var(--muted)]">Saved with {participantEmail}.</span> : null}
+                </div>
+              </div>
+
+              <div className="route-note-panel">
+                <p className="detail-label">Working rhythm</p>
+                <p className="text-sm leading-7 text-[var(--muted)]">
+                  Save whenever you want. Your response stays attached to this link on this device, and clearing the grid now saves as a real empty response.
+                </p>
+              </div>
+            </Card>
+          </aside>
+        </section>
       ) : null}
 
       {status ? <StatusBanner tone={status.tone}>{status.message}</StatusBanner> : null}

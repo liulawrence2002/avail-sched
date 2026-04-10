@@ -20,6 +20,13 @@ export function formatInstant(value, timezone) {
   }).format(new Date(value));
 }
 
+export function buildParticipantLink(publicId, token) {
+  if (!publicId || !token) {
+    return "";
+  }
+  return `${window.location.origin}/e/${publicId}?token=${encodeURIComponent(token)}`;
+}
+
 export function buildGrid(candidateSlotsUtc, timezone) {
   const grouped = {};
 

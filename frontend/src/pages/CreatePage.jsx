@@ -16,6 +16,7 @@ const initialForm = {
   endDate: "",
   dailyStartTime: "09:00",
   dailyEndTime: "18:00",
+  resultsVisibility: "aggregate_public",
 };
 
 const CREATE_DETAILS = {
@@ -67,8 +68,9 @@ export default function CreatePage({ copy, mode }) {
       dateRange,
       hours: `${form.dailyStartTime} - ${form.dailyEndTime}`,
       duration: `${form.durationMinutes} minute meeting`,
+      results: form.resultsVisibility === "host_only" ? "Host-only ranking" : "Guest-safe ranking",
     };
-  }, [form.dailyEndTime, form.dailyStartTime, form.durationMinutes, form.endDate, form.startDate, form.timezone]);
+  }, [form.dailyEndTime, form.dailyStartTime, form.durationMinutes, form.endDate, form.resultsVisibility, form.startDate, form.timezone]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -94,16 +96,16 @@ export default function CreatePage({ copy, mode }) {
   const publicLink = result ? `${window.location.origin}/e/${result.publicId}` : "";
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-        <Card variant="strong" className="space-y-6">
+    <div className="route-shell route-shell--create space-y-6">
+      <section className="route-hero route-hero--create">
+        <div className="route-hero__copy">
           <span className="eyebrow">{details.headerLabel}</span>
           <div className="space-y-4">
             <h1 className="display-title display-title-lg">{copy.create.title}</h1>
             <p className="section-kicker">{copy.create.subtitle}</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="route-metric-grid">
             {details.overview.map((item) => (
               <div key={item.label} className="metric-pill">
                 <span className="metric-label">{item.label}</span>
@@ -112,23 +114,24 @@ export default function CreatePage({ copy, mode }) {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        <Card className="space-y-5">
+        <div className="route-hero__panel">
           <span className="eyebrow">{details.asideTitle}</span>
           <h2 className="display-title text-[2.4rem] leading-none">{copy.create.shareTitle}</h2>
           <p className="text-sm leading-7 text-[var(--muted)]">{details.asideBody}</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="route-detail-grid">
             <MetricTile label="Timezone" value={schedulePreview.timezone} />
             <MetricTile label="Date range" value={schedulePreview.dateRange} />
             <MetricTile label="Daily window" value={schedulePreview.hours} />
             <MetricTile label="Duration" value={schedulePreview.duration} />
+            <MetricTile label="Results" value={schedulePreview.results} />
           </div>
-        </Card>
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-        <Card as="form" onSubmit={handleSubmit} className="space-y-8">
+      <section className="route-grid route-grid--create">
+        <Card as="form" onSubmit={handleSubmit} className="route-form-panel space-y-8">
           <FormSection title={details.sections.basics}>
             <Field label={copy.create.fieldTitle}>
               <input
@@ -149,6 +152,12 @@ export default function CreatePage({ copy, mode }) {
             </Field>
             <Field label={copy.create.fieldTimezone} help="Use an IANA timezone like America/New_York.">
               <input className="input" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} required />
+            </Field>
+            <Field label="Results visibility" help="Guests always see aggregate counts. Host-only hides the ranking screen from the public link.">
+              <select className="input" value={form.resultsVisibility} onChange={(e) => setForm({ ...form, resultsVisibility: e.target.value })}>
+                <option value="aggregate_public">Guest-safe ranking</option>
+                <option value="host_only">Host only</option>
+              </select>
             </Field>
           </FormSection>
 
@@ -205,12 +214,12 @@ export default function CreatePage({ copy, mode }) {
           </div>
         </Card>
 
-        <div className="space-y-4">
-          <Card className="space-y-5">
+        <aside className="route-sidebar route-sidebar--sticky space-y-4">
+          <Card className="route-share-panel space-y-5">
             <span className="eyebrow">{copy.create.shareTitle}</span>
             {result ? (
               <>
-                <div className="rounded-[1.6rem] border border-[var(--line)] bg-white/60 p-4">
+                <div className="route-link-card">
                   <p className="detail-label">{copy.create.sharePublicLabel}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Link className="text-sm font-semibold leading-6 underline decoration-[rgba(28,25,23,0.2)] underline-offset-4" to={`/e/${result.publicId}`}>
@@ -220,7 +229,7 @@ export default function CreatePage({ copy, mode }) {
                   </div>
                 </div>
 
-                <div className="rounded-[1.6rem] border border-[var(--line)] bg-white/60 p-4">
+                <div className="route-link-card">
                   <p className="detail-label">{copy.create.shareHostLabel}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <a className="text-sm font-semibold leading-6 underline decoration-[rgba(28,25,23,0.2)] underline-offset-4" href={result.hostLink}>
@@ -253,7 +262,7 @@ export default function CreatePage({ copy, mode }) {
               The event page, ranking screen, and host workspace now share the same visual system so the product feels related end to end.
             </p>
           </Card>
-        </div>
+        </aside>
       </section>
     </div>
   );
@@ -284,7 +293,7 @@ function validateForm(form) {
 
 function MetricTile({ label, value }) {
   return (
-    <div className="rounded-[1.4rem] border border-[var(--line)] bg-white/55 p-4">
+    <div className="route-detail-tile">
       <p className="detail-label">{label}</p>
       <p className="mt-2 text-sm font-semibold leading-6 text-[var(--text)]">{value}</p>
     </div>

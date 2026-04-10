@@ -34,19 +34,14 @@ export default function HostPage({ copy, mode }) {
   useEffect(() => {
     let isActive = true;
 
-    api.getHostEvent(hostToken)
-      .then((hostEvent) => {
+    Promise.all([api.getHostEvent(hostToken), api.getHostResults(hostToken)])
+      .then(([hostEvent, resultsData]) => {
         if (!isActive) {
-          return null;
+          return;
         }
         setEvent(hostEvent);
         setFinalData(hostEvent.finalSelection);
-        return api.getResults(hostEvent.publicId);
-      })
-      .then((resultsData) => {
-        if (isActive && resultsData) {
-          setResults(resultsData);
-        }
+        setResults(resultsData);
       })
       .catch((err) => {
         if (isActive) {
@@ -105,23 +100,34 @@ export default function HostPage({ copy, mode }) {
   const [topSlot, ...otherSlots] = results.topSlots;
 
   return (
-    <div className="space-y-6">
-      <Card variant="strong" className="space-y-5">
-        <span className="eyebrow">{details.label}</span>
-        <div className="space-y-4">
-          <h1 className="display-title display-title-lg">{copy.host.title}</h1>
-          <p className="section-kicker">{copy.host.eventLabel}: {event.title}</p>
+    <div className="route-shell route-shell--host space-y-6">
+      <section className="route-hero route-hero--host">
+        <div className="route-hero__copy">
+          <span className="eyebrow">{details.label}</span>
+          <div className="space-y-4">
+            <h1 className="display-title display-title-lg">{copy.host.title}</h1>
+            <p className="section-kicker">{copy.host.eventLabel}: {event.title}</p>
+          </div>
+          <div className="pill-row">
+            <span className="meta-pill">Timezone {event.timezone}</span>
+            <span className="meta-pill">Respondents {event.stats.respondentCount}</span>
+            <span className="meta-pill">Views {event.stats.viewCount}</span>
+            <span className="meta-pill">Top slots {results.topSlots.length}</span>
+          </div>
         </div>
-        <div className="pill-row">
-          <span className="meta-pill">Timezone {event.timezone}</span>
-          <span className="meta-pill">Respondents {event.stats.respondentCount}</span>
-          <span className="meta-pill">Views {event.stats.viewCount}</span>
-          <span className="meta-pill">Top slots {results.topSlots.length}</span>
+
+        <div className="route-hero__panel">
+          <div className="route-note-panel">
+            <p className="detail-label">Decision posture</p>
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              Review the ranked windows here, then lock one winner. After finalization, this page becomes the handoff and export surface.
+            </p>
+          </div>
         </div>
-      </Card>
+      </section>
 
       {finalData ? (
-        <Card className="space-y-5">
+        <Card className="route-final-panel space-y-5">
           <span className="eyebrow">{copy.host.finalizedTitle}</span>
           <div className="grid gap-5 lg:grid-cols-[1fr,auto] lg:items-end">
             <div className="space-y-3">
@@ -132,9 +138,11 @@ export default function HostPage({ copy, mode }) {
               <a className="btn btn-primary inline-flex rounded-full px-5 py-3 text-sm font-semibold" href={api.icsUrl(event.publicId)}>
                 {copy.host.downloadIcs}
               </a>
-              <Link className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold" to={`/e/${event.publicId}/results`}>
-                View public ranking
-              </Link>
+              {event.resultsVisibility !== "host_only" ? (
+                <Link className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold" to={`/e/${event.publicId}/results`}>
+                  View public ranking
+                </Link>
+              ) : null}
             </div>
           </div>
         </Card>
@@ -143,7 +151,7 @@ export default function HostPage({ copy, mode }) {
       {!topSlot ? <StatusBanner tone="info">{details.noSlots}</StatusBanner> : null}
 
       {topSlot && !finalData ? (
-        <Card className="space-y-5">
+        <Card className="host-lead-card space-y-5">
           <span className="eyebrow">{details.recommendation}</span>
           <div className="grid gap-5 lg:grid-cols-[1fr,auto] lg:items-end">
             <div className="space-y-4">
@@ -167,31 +175,65 @@ export default function HostPage({ copy, mode }) {
               {finalizingSlot === topSlot.slotStartUtc ? "Finalizing..." : copy.host.finalizeButton}
             </button>
           </div>
+
+          {results.participantDetailsVisible ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <NameGroup label="Can attend" names={topSlot.canAttend} fallback="Nobody yet" tone="positive" />
+              <NameGroup label="Would need compromise" names={topSlot.cannotAttend} fallback="Nobody" tone="muted" />
+            </div>
+          ) : null}
         </Card>
       ) : null}
 
       {otherSlots.length && !finalData ? (
         <div className="grid gap-4">
           {otherSlots.map((slot) => (
-            <Card key={slot.slotStartUtc} variant="ghost" className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="detail-label">Alternative</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">{formatInstant(slot.slotStartUtc, event.timezone)}</h2>
-                <p className="mt-2 text-sm text-[var(--muted)]">{slot.percentOfMax}% {copy.host.percentLabel}</p>
+            <Card key={slot.slotStartUtc} variant="ghost" className="host-option-card space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="detail-label">Alternative</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">{formatInstant(slot.slotStartUtc, event.timezone)}</h2>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{slot.percentOfMax}% {copy.host.percentLabel}</p>
+                </div>
+                <button
+                  className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold"
+                  disabled={Boolean(finalizingSlot)}
+                  onClick={() => finalize(slot.slotStartUtc)}
+                >
+                  {finalizingSlot === slot.slotStartUtc ? "Finalizing..." : copy.host.finalizeButton}
+                </button>
               </div>
-              <button
-                className="btn btn-secondary rounded-full px-5 py-3 text-sm font-semibold"
-                disabled={Boolean(finalizingSlot)}
-                onClick={() => finalize(slot.slotStartUtc)}
-              >
-                {finalizingSlot === slot.slotStartUtc ? "Finalizing..." : copy.host.finalizeButton}
-              </button>
+
+              {results.participantDetailsVisible ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <NameGroup label="Can attend" names={slot.canAttend} fallback="Nobody yet" tone="positive" />
+                  <NameGroup label="Would need compromise" names={slot.cannotAttend} fallback="Nobody" tone="muted" />
+                </div>
+              ) : null}
             </Card>
           ))}
         </div>
       ) : null}
 
       {error ? <StatusBanner tone={finalData ? "info" : "error"}>{error}</StatusBanner> : null}
+      {event.resultsVisibility === "host_only" ? <StatusBanner tone="info">Public ranking is hidden for this event. Only the host workspace shows attendee details.</StatusBanner> : null}
+    </div>
+  );
+}
+
+function NameGroup({ label, names, fallback, tone }) {
+  return (
+    <div className="rounded-[1.5rem] border border-[var(--line)] bg-white/50 p-4">
+      <p className="detail-label">{label}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {names.length
+          ? names.map((name) => (
+              <span key={`${label}-${name}`} className="name-chip" data-tone={tone}>
+                {name}
+              </span>
+            ))
+          : <span className="name-chip" data-tone={tone}>{fallback}</span>}
+      </div>
     </div>
   );
 }

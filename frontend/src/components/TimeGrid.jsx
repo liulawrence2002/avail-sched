@@ -62,27 +62,34 @@ export default function TimeGrid({ event, selections, onChange, copy, disabled =
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {AVAILABILITY_OPTIONS.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            className={`btn option-toggle ${activeWeight === option.weight ? "is-active" : ""}`}
-            aria-pressed={activeWeight === option.weight}
-            disabled={disabled}
-            onClick={() => setActiveWeight(option.weight)}
-          >
-            {copy.availability[option.key]}
+      <div className="grid-toolbar">
+        <div className="grid-toolbar__legend">
+          <p className="detail-label">Select a response level</p>
+          <div className="grid-toolbar__legend-options">
+            {AVAILABILITY_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={`btn option-toggle ${activeWeight === option.weight ? "is-active" : ""}`}
+                aria-pressed={activeWeight === option.weight}
+                disabled={disabled}
+                onClick={() => setActiveWeight(option.weight)}
+              >
+                {copy.availability[option.key]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid-toolbar__actions">
+          <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={markEvenings}>
+            {copy.grid.markEvenings}
           </button>
-        ))}
 
-        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={markEvenings}>
-          {copy.grid.markEvenings}
-        </button>
-
-        <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={clearAll}>
-          {copy.grid.clear}
-        </button>
+          <button type="button" className="btn btn-secondary rounded-full px-3 py-2 text-sm font-semibold" disabled={disabled} onClick={clearAll}>
+            {copy.grid.clear}
+          </button>
+        </div>
       </div>
 
       <div
