@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+
 import { AVAILABILITY_OPTIONS, buildGrid, formatInstant } from "../utils";
 
 export default function TimeGrid({ event, selections, onChange, copy, disabled = false }) {
@@ -92,6 +93,9 @@ export default function TimeGrid({ event, selections, onChange, copy, disabled =
         </div>
       </div>
 
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions --
+          Container forwards drag events; real click targets are the <button> cells inside.
+          Keyboard + ARIA rework is scheduled for Phase 3.5. */}
       <div
         className="grid-shell"
         onMouseUp={() => setDragging(false)}

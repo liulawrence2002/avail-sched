@@ -1,6 +1,8 @@
 import { Component } from "react";
-import Card from "./Card";
+
 import { COPY } from "../useMode";
+
+import Card from "./Card";
 
 export default class ErrorBoundary extends Component {
   constructor(props) {

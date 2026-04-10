@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+
 import { LANDING_SECTIONS } from "../landingSections";
 
 const LANDING_DETAILS = {

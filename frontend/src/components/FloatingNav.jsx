@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+
 import { LANDING_SECTIONS } from "../landingSections";
 
 const ROUTE_LABELS = [

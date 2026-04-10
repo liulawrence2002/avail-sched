@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+import { track } from "../analytics";
 import { api } from "../api";
 import Card from "../components/Card";
 import CopyButton from "../components/CopyButton";
 import StatusBanner from "../components/StatusBanner";
-import { track } from "../analytics";
 
 const initialForm = {
   title: "",

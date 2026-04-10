@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+
+import { track } from "../analytics";
 import { api } from "../api";
 import Card from "../components/Card";
 import CopyButton from "../components/CopyButton";
 import StatusBanner from "../components/StatusBanner";
 import TimeGrid from "../components/TimeGrid";
 import { buildParticipantLink, t } from "../utils";
-import { track } from "../analytics";
 
 const EVENT_DETAILS = {
   serious: {

@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
-import LandingPage from "./pages/LandingPage";
+
+import ErrorBoundary from "./components/ErrorBoundary";
+import FloatingNav from "./components/FloatingNav";
+import Footer from "./components/Footer";
 import CreatePage from "./pages/CreatePage";
 import EventPage from "./pages/EventPage";
-import ResultsPage from "./pages/ResultsPage";
 import HostPage from "./pages/HostPage";
+import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ResultsPage from "./pages/ResultsPage";
 import TermsPage from "./pages/TermsPage";
-import ErrorBoundary from "./components/ErrorBoundary";
-import Footer from "./components/Footer";
-import FloatingNav from "./components/FloatingNav";
 import { useMode } from "./useMode";
 
 export default function App() {
