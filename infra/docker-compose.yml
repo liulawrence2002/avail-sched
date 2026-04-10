@@ -53,6 +53,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      # nginx:alpine bundles BusyBox wget; -q silences stderr, --spider skips writing the body.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
 volumes:
   goblin_postgres_data:
