@@ -1,59 +1,85 @@
 # Quick Start
 
-Use one of the two startup flows below. Running both at the same time will usually conflict on port `8080` unless you override Docker's `BACKEND_PORT`.
+This project can run fully in Docker. If you are new to Docker, use the commands below and avoid `-v` unless you intentionally want to delete your local database data.
 
-## What You Need
+## What Docker Runs Here
 
-- Docker Desktop running
-- Node.js 20+
-- Java 21
+- `goblin-frontend`: the website
+- `goblin-backend`: the API
+- `goblin-postgres`: the database
+- `infra_goblin_postgres_data`: the database volume that keeps your local data
 
-## Option 1. Full Stack Docker
-
-Best if you just want the app running.
+## Start The Full App
 
 From the repo root:
 
 ```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack up --build
-```
-
-If `8080` is already busy, copy `infra/.env.example` to `infra/.env`, set `BACKEND_PORT`, and run:
-
-```powershell
-docker compose --env-file infra/.env -f infra/docker-compose.yml --profile fullstack up --build
+docker compose -f infra/docker-compose.yml --profile fullstack up --build -d
 ```
 
 Open:
 
 - Frontend: http://localhost:3001
-- Backend health: http://localhost:8080/actuator/health by default
+- Backend health: http://localhost:8080/actuator/health
 - Swagger UI: http://localhost:3001/swagger-ui.html
 
-Stop everything:
+## Stop The App But Keep Your Data
 
 ```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack down -v
+docker compose -f infra/docker-compose.yml --profile fullstack down
 ```
 
-## Option 2. Hybrid Dev
+## Rebuild Cleanly But Keep Your Data
 
-Best if you want to edit backend or frontend locally.
+Use this if you want to remove old local app containers/images and start fresh from the latest code:
 
-1. Start Postgres only:
+```powershell
+docker compose -f infra/docker-compose.yml --profile fullstack down --remove-orphans --rmi local
+docker compose -f infra/docker-compose.yml --profile fullstack up --build -d
+```
+
+This keeps the Postgres volume.
+
+## Delete Everything, Including Local Database Data
+
+Only use this if you want a completely fresh database:
+
+```powershell
+docker compose -f infra/docker-compose.yml --profile fullstack down -v --remove-orphans --rmi local
+```
+
+The `-v` flag deletes `infra_goblin_postgres_data`.
+
+## Useful Checks
+
+See running containers:
+
+```powershell
+docker ps
+```
+
+See logs:
+
+```powershell
+docker compose -f infra/docker-compose.yml --profile fullstack logs -f
+```
+
+## Hybrid Dev Option
+
+If you want Docker only for Postgres:
 
 ```powershell
 docker compose -f infra/docker-compose.yml up -d postgres
 ```
 
-2. Start the backend in a new terminal:
+Then run:
 
 ```powershell
 cd backend
 .\gradlew.bat bootRun
 ```
 
-3. Start the frontend in another new terminal:
+and:
 
 ```powershell
 cd frontend
@@ -61,32 +87,6 @@ npm install
 npm run dev
 ```
 
-Open:
-
-- Frontend: http://localhost:5173
-- Backend health: http://localhost:8080/actuator/health
-- Swagger UI: http://localhost:5173/swagger-ui.html
-
-Stop Postgres when done:
-
-```powershell
-docker compose -f infra/docker-compose.yml down
-```
-
-## Environment Notes
-
-- `APP_BASE_URL` should match the frontend URL.
-  - Full stack Docker: `http://localhost:3001`
-  - Hybrid dev: `http://localhost:5173`
-- `BACKEND_PORT` controls the Docker backend host port and defaults to `8080`.
-- `VITE_API_BASE_URL` can stay unset for local work. The app defaults to `/api`.
-
-## If Something Breaks
-
-- `Port 8080 is already in use`: stop whichever backend is already using it, or set `BACKEND_PORT` in `infra/.env` and start Docker with `--env-file infra/.env`.
-- Docker errors before startup: wait for Docker Desktop to finish starting.
-- Frontend loads but API fails: make sure the backend is running on the expected port (`8080` by default, or your `BACKEND_PORT` override).
-
 ## More Detail
 
-See [README.md](README.md) for the full setup, environment variables, deploy notes, and troubleshooting.
+See [README.md](README.md) for the full Docker explanation, overview, troubleshooting, and API summary.
