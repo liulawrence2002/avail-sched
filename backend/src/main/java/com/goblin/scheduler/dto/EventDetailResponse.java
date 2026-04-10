@@ -16,6 +16,7 @@ public record EventDetailResponse(
     LocalDate endDate,
     LocalTime dailyStartTime,
     LocalTime dailyEndTime,
+    String resultsVisibility,
     List<Instant> candidateSlotsUtc,
     StatsView stats,
     FinalView finalSelection

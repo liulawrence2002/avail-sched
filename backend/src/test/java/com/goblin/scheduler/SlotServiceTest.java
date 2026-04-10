@@ -19,10 +19,9 @@ class SlotServiceTest {
         Event event = new Event(
             1L, "pub", "host", "Title", null, "America/New_York",
             30, 60, LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 11),
-            LocalTime.of(9, 0), LocalTime.of(11, 0), Instant.now()
+            LocalTime.of(9, 0), LocalTime.of(11, 0), "aggregate_public", Instant.now()
         );
 
         assertEquals(6, slotService.generateCandidateSlots(event).size());
     }
 }
-

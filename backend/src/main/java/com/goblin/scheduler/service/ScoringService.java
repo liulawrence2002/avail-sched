@@ -18,7 +18,8 @@ public class ScoringService {
         Event event,
         List<Instant> candidateSlots,
         List<Participant> participants,
-        Map<Long, Map<Instant, Double>> availabilityMap
+        Map<Long, Map<Instant, Double>> availabilityMap,
+        boolean includeParticipantDetails
     ) {
         int subSlots = event.durationMinutes() / event.slotMinutes();
         double maxScore = Math.max(1.0, participants.size() * subSlots);
@@ -41,16 +42,24 @@ public class ScoringService {
                 score += participantScore;
                 if (normalized >= 0.99) {
                     yes++;
-                    canAttend.add(participant.displayName());
+                    if (includeParticipantDetails) {
+                        canAttend.add(participant.displayName());
+                    }
                 } else if (normalized >= 0.59) {
                     maybe++;
-                    canAttend.add(participant.displayName());
+                    if (includeParticipantDetails) {
+                        canAttend.add(participant.displayName());
+                    }
                 } else if (normalized >= 0.29) {
                     bribe++;
-                    cannotAttend.add(participant.displayName() + " (snacks may help)");
+                    if (includeParticipantDetails) {
+                        cannotAttend.add(participant.displayName() + " (snacks may help)");
+                    }
                 } else {
                     no++;
-                    cannotAttend.add(participant.displayName());
+                    if (includeParticipantDetails) {
+                        cannotAttend.add(participant.displayName());
+                    }
                 }
             }
             return new ResultsResponse.ResultSlot(slot, round(score), round((score / maxScore) * 100.0), yes, maybe, bribe, no, canAttend, cannotAttend);
@@ -61,4 +70,3 @@ public class ScoringService {
         return Math.round(value * 100.0) / 100.0;
     }
 }
-

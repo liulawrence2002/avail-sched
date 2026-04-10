@@ -58,6 +58,12 @@ public class EventController {
         return eventService.getResults(publicId);
     }
 
+    @Operation(summary = "Get scored availability results with participant details by host token")
+    @GetMapping("/host/{hostToken}/results")
+    public ResultsResponse getHostResults(@PathVariable String hostToken) {
+        return eventService.getHostResults(hostToken);
+    }
+
     @Operation(summary = "Finalize a time slot for the event")
     @PostMapping("/events/{publicId}/finalize")
     public FinalSelectionResponse finalizeEvent(@PathVariable String publicId, @RequestParam String hostToken, @Valid @RequestBody FinalizeRequest request) {

@@ -18,6 +18,6 @@ public record CreateEventRequest(
     @NotNull LocalDate startDate,
     @NotNull LocalDate endDate,
     @NotNull LocalTime dailyStartTime,
-    @NotNull LocalTime dailyEndTime
+    @NotNull LocalTime dailyEndTime,
+    @Size(max = 32) String resultsVisibility
 ) {}
-

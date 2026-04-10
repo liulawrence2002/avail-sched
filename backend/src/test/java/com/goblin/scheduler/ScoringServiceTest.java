@@ -23,13 +23,13 @@ class ScoringServiceTest {
         Event event = new Event(
             1L, "pub", "host", "Title", null, "UTC",
             30, 60, LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 10),
-            LocalTime.of(9, 0), LocalTime.of(10, 30), Instant.now()
+            LocalTime.of(9, 0), LocalTime.of(10, 30), "aggregate_public", Instant.now()
         );
         Instant slotOne = Instant.parse("2026-03-10T09:00:00Z");
         Instant slotTwo = Instant.parse("2026-03-10T09:30:00Z");
         List<Participant> participants = List.of(
-            new Participant(1L, 1L, "p1", "Avery", Instant.now()),
-            new Participant(2L, 1L, "p2", "Blair", Instant.now())
+            new Participant(1L, 1L, "p1", "Avery", null, Instant.now()),
+            new Participant(2L, 1L, "p2", "Blair", null, Instant.now())
         );
 
         List<ResultsResponse.ResultSlot> results = scoringService.scoreTopSlots(
@@ -39,7 +39,8 @@ class ScoringServiceTest {
             Map.of(
                 1L, Map.of(slotOne, 1.0, slotTwo, 1.0),
                 2L, Map.of(slotOne, 0.6, slotTwo, 0.6)
-            )
+            ),
+            true
         );
 
         assertEquals(1, results.size());

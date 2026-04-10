@@ -5,9 +5,18 @@ import java.util.List;
 
 public record ResultsResponse(
     String publicId,
+    String timezone,
     int participantCount,
+    long respondentCount,
+    FinalView finalSelection,
+    boolean participantDetailsVisible,
     List<ResultSlot> topSlots
 ) {
+    public record FinalView(
+        Instant slotStartUtc,
+        Instant finalizedAt
+    ) {}
+
     public record ResultSlot(
         Instant slotStartUtc,
         double score,
@@ -20,4 +29,3 @@ public record ResultsResponse(
         List<String> cannotAttend
     ) {}
 }
-

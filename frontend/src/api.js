@@ -34,6 +34,7 @@ export const api = {
     request(`/events/${publicId}/participants/${token}/availability`, { method: "PUT", body: JSON.stringify(payload) }),
   getResults: (publicId) => request(`/events/${publicId}/results`),
   getHostEvent: (hostToken) => request(`/host/${hostToken}`),
+  getHostResults: (hostToken) => request(`/host/${hostToken}/results`),
   finalizeEvent: (publicId, hostToken, payload) =>
     request(`/events/${publicId}/finalize?hostToken=${encodeURIComponent(hostToken)}`, { method: "POST", body: JSON.stringify(payload) }),
   getFinal: (publicId) => request(`/events/${publicId}/final`),

@@ -27,6 +27,7 @@ public class EventRepository {
         rs.getDate("end_date").toLocalDate(),
         rs.getTime("daily_start_time").toLocalTime(),
         rs.getTime("daily_end_time").toLocalTime(),
+        rs.getString("results_visibility"),
         rs.getTimestamp("created_at").toInstant()
     );
 
@@ -38,8 +39,8 @@ public class EventRepository {
         Long id = jdbcTemplate.queryForObject("""
             insert into events (
                 public_id, host_token, title, description, timezone, slot_minutes, duration_minutes,
-                start_date, end_date, daily_start_time, daily_end_time, created_at
-            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                start_date, end_date, daily_start_time, daily_end_time, results_visibility, created_at
+            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             returning id
             """, Long.class,
             event.publicId(),
@@ -53,11 +54,12 @@ public class EventRepository {
             Date.valueOf(event.endDate()),
             Time.valueOf(event.dailyStartTime()),
             Time.valueOf(event.dailyEndTime()),
+            event.resultsVisibility(),
             Timestamp.from(event.createdAt())
         );
         return new Event(id, event.publicId(), event.hostToken(), event.title(), event.description(), event.timezone(),
             event.slotMinutes(), event.durationMinutes(), event.startDate(), event.endDate(),
-            event.dailyStartTime(), event.dailyEndTime(), event.createdAt());
+            event.dailyStartTime(), event.dailyEndTime(), event.resultsVisibility(), event.createdAt());
     }
 
     public Optional<Event> findByPublicId(String publicId) {

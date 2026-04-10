@@ -11,25 +11,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ResultCache {
     private static final Duration TTL = Duration.ofSeconds(30);
-    private final Map<Long, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final Map<CacheKey, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public ResultsResponse get(long eventId) {
-        CacheEntry entry = cache.get(eventId);
+    public ResultsResponse get(long eventId, boolean includeParticipantDetails) {
+        CacheKey key = new CacheKey(eventId, includeParticipantDetails);
+        CacheEntry entry = cache.get(key);
         if (entry == null || Instant.now().isAfter(entry.createdAt.plus(TTL))) {
-            cache.remove(eventId);
+            cache.remove(key);
             return null;
         }
         return entry.value;
     }
 
-    public void put(long eventId, ResultsResponse response) {
-        cache.put(eventId, new CacheEntry(response, Instant.now()));
+    public void put(long eventId, boolean includeParticipantDetails, ResultsResponse response) {
+        cache.put(new CacheKey(eventId, includeParticipantDetails), new CacheEntry(response, Instant.now()));
     }
 
     public void evict(long eventId) {
-        cache.remove(eventId);
+        cache.keySet().removeIf(key -> key.eventId == eventId);
     }
 
+    private record CacheKey(long eventId, boolean includeParticipantDetails) {}
     private record CacheEntry(ResultsResponse value, Instant createdAt) {}
 }
-

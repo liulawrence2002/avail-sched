@@ -17,6 +17,6 @@ public record Event(
     LocalDate endDate,
     LocalTime dailyStartTime,
     LocalTime dailyEndTime,
+    String resultsVisibility,
     Instant createdAt
 ) {}
-

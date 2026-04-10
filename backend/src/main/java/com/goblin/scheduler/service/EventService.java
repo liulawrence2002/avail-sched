@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -30,6 +31,7 @@ import java.util.Set;
 @Service
 public class EventService {
     private static final Set<Integer> ALLOWED_DURATIONS = Set.of(30, 60, 90);
+    private static final Set<String> ALLOWED_RESULTS_VISIBILITIES = Set.of("aggregate_public", "host_only");
     private static final DateTimeFormatter ICS_DATE = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withLocale(Locale.US).withZone(ZoneId.of("UTC"));
 
     private final EventRepository eventRepository;
@@ -69,6 +71,7 @@ public class EventService {
 
     public CreateEventResponse createEvent(CreateEventRequest request) {
         validateEventRequest(request);
+        String resultsVisibility = normalizeResultsVisibility(request.resultsVisibility());
         Event saved = eventRepository.save(new Event(
             0L,
             tokenGenerator.randomPublicId(),
@@ -82,6 +85,7 @@ public class EventService {
             request.endDate(),
             request.dailyStartTime(),
             request.dailyEndTime(),
+            resultsVisibility,
             Instant.now()
         ));
         eventStatsRepository.init(saved.id());
@@ -105,11 +109,12 @@ public class EventService {
         List<AvailabilityItem> items = availabilityRepository.findByParticipantAndEventId(participant.id(), event.id()).stream()
             .map(record -> new AvailabilityItem(record.slotStartUtc(), record.weight()))
             .toList();
-        return new ParticipantAvailabilityResponse(participant.displayName(), items);
+        return new ParticipantAvailabilityResponse(participant.displayName(), participant.email(), items);
     }
 
     public void updateAvailability(String publicId, String token, UpdateAvailabilityRequest request) {
         Event event = requireEvent(publicId);
+        ensureVotingOpen(event.id());
         Participant participant = participantRepository.findByTokenAndEventId(token, event.id())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Participant not found"));
         Set<Instant> validSlots = Set.copyOf(slotService.generateCandidateSlots(event));
@@ -124,12 +129,26 @@ public class EventService {
 
     public ResultsResponse getResults(String publicId) {
         Event event = requireEvent(publicId);
-        ResultsResponse cached = resultCache.get(event.id());
+        if ("host_only".equals(event.resultsVisibility())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Results are only available to the host for this event");
+        }
+        ResultsResponse cached = resultCache.get(event.id(), false);
         if (cached != null) {
             return cached;
         }
-        ResultsResponse computed = computeResults(event);
-        resultCache.put(event.id(), computed);
+        ResultsResponse computed = computeResults(event, false);
+        resultCache.put(event.id(), false, computed);
+        return computed;
+    }
+
+    public ResultsResponse getHostResults(String hostToken) {
+        Event event = requireEventByHostToken(hostToken);
+        ResultsResponse cached = resultCache.get(event.id(), true);
+        if (cached != null) {
+            return cached;
+        }
+        ResultsResponse computed = computeResults(event, true);
+        resultCache.put(event.id(), true, computed);
         return computed;
     }
 
@@ -145,6 +164,7 @@ public class EventService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Slot is not valid for this event");
         }
         FinalSelection selection = finalSelectionRepository.save(event.id(), request.slotStartUtc());
+        resultCache.evict(event.id());
         return new FinalSelectionResponse(publicId, selection.slotStartUtc(), selection.finalizedAt());
     }
 
@@ -160,26 +180,20 @@ public class EventService {
         FinalSelection selection = finalSelectionRepository.findByEventId(event.id())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No finalized slot yet"));
         Instant end = selection.slotStartUtc().plusSeconds(event.durationMinutes() * 60L);
-        return """
-            BEGIN:VCALENDAR
-            VERSION:2.0
-            PRODID:-//Goblin Scheduler//EN
-            BEGIN:VEVENT
-            UID:%s@goblin-scheduler
-            DTSTAMP:%s
-            DTSTART:%s
-            DTEND:%s
-            SUMMARY:%s
-            DESCRIPTION:%s
-            END:VEVENT
-            END:VCALENDAR
-            """.formatted(
-            event.publicId(),
-            ICS_DATE.format(Instant.now()),
-            ICS_DATE.format(selection.slotStartUtc()),
-            ICS_DATE.format(end),
-            sanitizeIcs(event.title()),
-            sanitizeIcs(event.description() == null ? "Scheduled with Goblin Scheduler" : event.description())
+        return String.join("\r\n",
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Goblin Scheduler//EN",
+            "BEGIN:VEVENT",
+            "UID:%s@goblin-scheduler".formatted(event.publicId()),
+            "DTSTAMP:%s".formatted(ICS_DATE.format(Instant.now())),
+            "DTSTART:%s".formatted(ICS_DATE.format(selection.slotStartUtc())),
+            "DTEND:%s".formatted(ICS_DATE.format(end)),
+            "SUMMARY:%s".formatted(sanitizeIcs(event.title())),
+            "DESCRIPTION:%s".formatted(sanitizeIcs(event.description() == null ? "Scheduled with Goblin Scheduler" : event.description())),
+            "END:VEVENT",
+            "END:VCALENDAR",
+            ""
         );
     }
 
@@ -206,6 +220,7 @@ public class EventService {
             event.endDate(),
             event.dailyStartTime(),
             event.dailyEndTime(),
+            event.resultsVisibility(),
             candidateSlots,
             new EventDetailResponse.StatsView(stats.viewCount(), stats.respondentCount()),
             finalSelection == null ? null : new EventDetailResponse.FinalView(finalSelection.slotStartUtc(), finalSelection.finalizedAt())
@@ -214,8 +229,24 @@ public class EventService {
 
     public JoinParticipantResponse joinParticipant(String publicId, JoinParticipantRequest request) {
         Event event = requireEvent(publicId);
-        Participant participant = participantRepository.save(new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), TextSanitizer.sanitize(request.displayName()), Instant.now()));
-        return new JoinParticipantResponse(participant.token());
+        ensureVotingOpen(event.id());
+
+        String displayName = TextSanitizer.sanitize(request.displayName());
+        String email = normalizeEmail(request.email());
+        if (email != null) {
+            Participant existing = participantRepository.findByEmailAndEventId(email, event.id()).orElse(null);
+            if (existing != null) {
+                if (!existing.displayName().equals(displayName) || !email.equals(existing.email())) {
+                    participantRepository.updateIdentity(existing.id(), displayName, email);
+                }
+                return new JoinParticipantResponse(existing.token(), participantLink(event.publicId(), existing.token()), true);
+            }
+        }
+
+        Participant participant = participantRepository.save(
+            new Participant(0L, event.id(), tokenGenerator.randomUrlToken(), displayName, email, Instant.now())
+        );
+        return new JoinParticipantResponse(participant.token(), participantLink(event.publicId(), participant.token()), false);
     }
 
     private Event requireEvent(String publicId) {
@@ -223,15 +254,25 @@ public class EventService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
     }
 
-    private ResultsResponse computeResults(Event event) {
+    private ResultsResponse computeResults(Event event, boolean includeParticipantDetails) {
         List<Instant> candidateSlots = slotService.generateCandidateSlots(event);
         List<Participant> participants = participantRepository.findByEventId(event.id());
         Map<Long, Map<Instant, Double>> availabilityMap = new HashMap<>();
         for (AvailabilityRecord record : availabilityRepository.findByEventId(event.id())) {
             availabilityMap.computeIfAbsent(record.participantId(), ignored -> new HashMap<>()).put(record.slotStartUtc(), record.weight());
         }
+        EventStats stats = eventStatsRepository.findByEventId(event.id()).orElse(new EventStats(event.id(), 0, 0));
+        FinalSelection finalSelection = finalSelectionRepository.findByEventId(event.id()).orElse(null);
 
-        return new ResultsResponse(event.publicId(), participants.size(), scoringService.scoreTopSlots(event, candidateSlots, participants, availabilityMap));
+        return new ResultsResponse(
+            event.publicId(),
+            event.timezone(),
+            participants.size(),
+            stats.respondentCount(),
+            finalSelection == null ? null : new ResultsResponse.FinalView(finalSelection.slotStartUtc(), finalSelection.finalizedAt()),
+            includeParticipantDetails,
+            scoringService.scoreTopSlots(event, candidateSlots, participants, availabilityMap, includeParticipantDetails)
+        );
     }
 
     private void validateEventRequest(CreateEventRequest request) {
@@ -247,10 +288,43 @@ public class EventService {
         if ((request.durationMinutes() % request.slotMinutes()) != 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duration must align with slot size");
         }
-        ZoneId.of(request.timezone());
+        String resultsVisibility = normalizeResultsVisibility(request.resultsVisibility());
+        if (!ALLOWED_RESULTS_VISIBILITIES.contains(resultsVisibility)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Results visibility is not supported");
+        }
+        try {
+            ZoneId.of(request.timezone());
+        } catch (DateTimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use a valid IANA timezone, like America/New_York");
+        }
     }
 
     private String sanitizeIcs(String value) {
-        return value.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n");
+        String normalized = value.replace("\r\n", "\n").replace("\r", "\n");
+        return normalized.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n");
+    }
+
+    private String normalizeResultsVisibility(String requestedVisibility) {
+        if (requestedVisibility == null || requestedVisibility.isBlank()) {
+            return "aggregate_public";
+        }
+        return requestedVisibility.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeEmail(String requestedEmail) {
+        if (requestedEmail == null || requestedEmail.isBlank()) {
+            return null;
+        }
+        return requestedEmail.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String participantLink(String publicId, String token) {
+        return appProperties.baseUrl() + "/e/" + publicId + "?token=" + token;
+    }
+
+    private void ensureVotingOpen(long eventId) {
+        if (finalSelectionRepository.findByEventId(eventId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voting is closed for this event");
+        }
     }
 }

@@ -7,6 +7,6 @@ public record Participant(
     long eventId,
     String token,
     String displayName,
+    String email,
     Instant createdAt
 ) {}
-
