@@ -2,6 +2,7 @@ package com.goblin.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.goblin.scheduler.config.ScoringThresholds;
 import com.goblin.scheduler.dto.ResultsResponse;
 import com.goblin.scheduler.model.Event;
 import com.goblin.scheduler.model.Participant;
@@ -15,7 +16,8 @@ import org.junit.jupiter.api.Test;
 
 class ScoringServiceTest {
 
-  private final ScoringService scoringService = new ScoringService();
+  private final ScoringService scoringService =
+      new ScoringService(new ScoringThresholds(0.99, 0.59, 0.29));
 
   @Test
   void scoresAvailabilityAcrossSubSlots() {

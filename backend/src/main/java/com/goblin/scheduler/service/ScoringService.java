@@ -1,5 +1,7 @@
 package com.goblin.scheduler.service;
 
+import com.goblin.scheduler.config.SchedulingRules;
+import com.goblin.scheduler.config.ScoringThresholds;
 import com.goblin.scheduler.dto.ResultsResponse;
 import com.goblin.scheduler.model.Event;
 import com.goblin.scheduler.model.Participant;
@@ -12,6 +14,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ScoringService {
+
+  private final ScoringThresholds thresholds;
+
+  public ScoringService(ScoringThresholds thresholds) {
+    this.thresholds = thresholds;
+  }
 
   public List<ResultsResponse.ResultSlot> scoreTopSlots(
       Event event,
@@ -43,17 +51,17 @@ public class ScoringService {
                 }
                 double normalized = subSlots == 0 ? 0.0 : participantScore / subSlots;
                 score += participantScore;
-                if (normalized >= 0.99) {
+                if (normalized >= thresholds.yesThreshold()) {
                   yes++;
                   if (includeParticipantDetails) {
                     canAttend.add(participant.displayName());
                   }
-                } else if (normalized >= 0.59) {
+                } else if (normalized >= thresholds.maybeThreshold()) {
                   maybe++;
                   if (includeParticipantDetails) {
                     canAttend.add(participant.displayName());
                   }
-                } else if (normalized >= 0.29) {
+                } else if (normalized >= thresholds.bribeThreshold()) {
                   bribe++;
                   if (includeParticipantDetails) {
                     cannotAttend.add(participant.displayName() + " (snacks may help)");
@@ -77,7 +85,7 @@ public class ScoringService {
                   cannotAttend);
             })
         .sorted(Comparator.comparingDouble(ResultsResponse.ResultSlot::score).reversed())
-        .limit(5)
+        .limit(SchedulingRules.TOP_SLOTS_COUNT)
         .toList();
   }
 
