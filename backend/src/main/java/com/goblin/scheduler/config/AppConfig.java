@@ -24,20 +24,13 @@ public class AppConfig {
     return new WebMvcConfigurer() {
       @Override
       public void addCorsMappings(CorsRegistry registry) {
+        // CORS is scoped to /api/** only. /actuator/** and /swagger-ui/** are served same-origin
+        // in prod and via the Vite dev proxy locally; exposing them across origins has no
+        // legitimate use and widens the blast radius. (Phase 1.4 tightening.)
         registry
             .addMapping("/api/**")
             .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
             .allowedMethods("GET", "POST", "PUT", "OPTIONS")
-            .allowedHeaders("*");
-        registry
-            .addMapping("/actuator/**")
-            .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
-            .allowedMethods("GET")
-            .allowedHeaders("*");
-        registry
-            .addMapping("/swagger-ui/**")
-            .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
-            .allowedMethods("GET")
             .allowedHeaders("*");
       }
     };

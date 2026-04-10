@@ -1,8 +1,15 @@
 spring:
+  # Local runs (./gradlew bootRun, tests) pick up application-dev.yml automatically.
+  # Production deploys must set SPRING_PROFILES_ACTIVE explicitly so dev defaults can never leak.
+  profiles:
+    default: dev
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/goblin_sched}
-    username: ${SPRING_DATASOURCE_USERNAME:goblin}
-    password: ${SPRING_DATASOURCE_PASSWORD:goblin}
+    # Placeholders have NO fallback values: a prod-profile startup without secrets will fail fast
+    # with a clear "Could not resolve placeholder" error instead of silently starting with dev
+    # credentials. (Phase 1.6 fail-fast hardening.)
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -21,7 +28,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        # Prod-safe minimum. Dev widens this in application-dev.yml. Phase 7 may re-tighten
+        # further (loopback binding or basic auth) once the prod deploy lands on Fly.io.
+        include: health,info
   endpoint:
     health:
       show-details: when-authorized
