@@ -38,26 +38,27 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Cross-cutting characterization tests for {@link EventService}.
+ * Cross-cutting characterization tests for the Phase 2.2 service split.
  *
- * <p>Written before the Phase 2 service split so that the refactor can be validated by running
- * these tests unchanged. This complements {@code EventServiceTest} (which drills into individual
- * methods) by exercising the full create → join → save → results → finalize → ICS pipeline as a
- * single flow, and by covering the edge cases the characterization requirement in Phase 0.4 calls
- * out: duplicate finalize (409), finalize-invalid-slot (400), and out-of-range availability items
- * silently filtered.
+ * <p>The tests wire all five new services manually in {@link #setUp} against a shared set of mocked
+ * repositories and exercise the full create → join → save → results → finalize → ICS pipeline
+ * through their public APIs. This is the safety net that proves the split preserves behavior: if
+ * any of these assertions trips, the split changed observable behavior somewhere.
  *
- * <p>When Phase 2.2 splits {@code EventService} into five smaller services, this file is the safety
- * net that proves external behavior is preserved.
+ * <p>The targeted per-service tests ({@code EventCreationServiceTest}, {@code
+ * EventQueryServiceTest}, {@code ParticipantServiceTest}, {@code ResultsServiceTest}, {@code
+ * FinalizationServiceTest}) cover the individual edge cases; this file is deliberately focused on
+ * the cross-service interactions (cache eviction, voting-open guard, host_only visibility boundary,
+ * ICS pipeline output) that no single per-service test can see.
  */
 @ExtendWith(MockitoExtension.class)
 class EventServiceCharacterizationTest {
@@ -73,7 +74,44 @@ class EventServiceCharacterizationTest {
   @Mock ResultCache resultCache;
   @Mock AppProperties appProperties;
 
-  @InjectMocks EventService eventService;
+  private EventQueryService query;
+  private EventCreationService creation;
+  private ParticipantService participants;
+  private ResultsService results;
+  private FinalizationService finalization;
+
+  @BeforeEach
+  void setUp() {
+    query =
+        new EventQueryService(
+            eventRepository, eventStatsRepository, finalSelectionRepository, slotService);
+    creation =
+        new EventCreationService(
+            eventRepository, eventStatsRepository, tokenGenerator, appProperties);
+    participants =
+        new ParticipantService(
+            query,
+            participantRepository,
+            availabilityRepository,
+            finalSelectionRepository,
+            eventStatsRepository,
+            slotService,
+            tokenGenerator,
+            resultCache,
+            appProperties);
+    results =
+        new ResultsService(
+            query,
+            participantRepository,
+            availabilityRepository,
+            eventStatsRepository,
+            finalSelectionRepository,
+            slotService,
+            scoringService,
+            resultCache);
+    finalization =
+        new FinalizationService(query, finalSelectionRepository, slotService, resultCache);
+  }
 
   private static final long EVENT_ID = 42L;
   private static final String PUBLIC_ID = "pub-xyz";
@@ -129,7 +167,7 @@ class EventServiceCharacterizationTest {
     when(eventRepository.save(any())).thenReturn(event);
     when(appProperties.baseUrl()).thenReturn("https://example.test");
 
-    CreateEventResponse created = eventService.createEvent(validCreateRequest());
+    CreateEventResponse created = creation.createEvent(validCreateRequest());
     assertEquals(PUBLIC_ID, created.publicId());
     assertEquals(HOST_TOKEN, created.hostToken());
     assertEquals("https://example.test/host/" + HOST_TOKEN, created.hostLink());
@@ -143,7 +181,7 @@ class EventServiceCharacterizationTest {
     when(participantRepository.save(any())).thenReturn(savedParticipant);
 
     JoinParticipantResponse joined =
-        eventService.joinParticipant(PUBLIC_ID, new JoinParticipantRequest("Alice", null));
+        participants.joinParticipant(PUBLIC_ID, new JoinParticipantRequest("Alice", null));
     assertEquals("participant-tok", joined.participantToken());
     assertFalse(joined.existingParticipant());
 
@@ -153,7 +191,7 @@ class EventServiceCharacterizationTest {
     when(slotService.generateCandidateSlots(event)).thenReturn(List.of(SLOT_ONE, SLOT_TWO));
     when(availabilityRepository.countParticipantsWithAvailability(EVENT_ID)).thenReturn(1L);
 
-    eventService.updateAvailability(
+    participants.updateAvailability(
         PUBLIC_ID,
         "participant-tok",
         new UpdateAvailabilityRequest(List.of(new AvailabilityItem(SLOT_ONE, 1.0))));
@@ -172,18 +210,18 @@ class EventServiceCharacterizationTest {
     when(scoringService.scoreTopSlots(any(), any(), any(), any(), eq(false)))
         .thenReturn(List.of(topSlot));
 
-    ResultsResponse results = eventService.getResults(PUBLIC_ID);
-    assertEquals(1, results.participantCount());
-    assertEquals(1, results.topSlots().size());
-    assertFalse(results.participantDetailsVisible());
-    verify(resultCache).put(EVENT_ID, false, results);
+    ResultsResponse resultsResponse = results.getResults(PUBLIC_ID);
+    assertEquals(1, resultsResponse.participantCount());
+    assertEquals(1, resultsResponse.topSlots().size());
+    assertFalse(resultsResponse.participantDetailsVisible());
+    verify(resultCache).put(EVENT_ID, false, resultsResponse);
 
     // --- finalize ---
     when(finalSelectionRepository.save(EVENT_ID, SLOT_ONE))
         .thenReturn(new FinalSelection(EVENT_ID, SLOT_ONE, Instant.parse("2026-03-15T00:00:00Z")));
 
     FinalSelectionResponse finalized =
-        eventService.finalizeEvent(PUBLIC_ID, HOST_TOKEN, new FinalizeRequest(SLOT_ONE));
+        finalization.finalizeEvent(PUBLIC_ID, HOST_TOKEN, new FinalizeRequest(SLOT_ONE));
     assertEquals(PUBLIC_ID, finalized.publicId());
     assertEquals(SLOT_ONE, finalized.slotStartUtc());
 
@@ -192,7 +230,7 @@ class EventServiceCharacterizationTest {
         .thenReturn(
             Optional.of(
                 new FinalSelection(EVENT_ID, SLOT_ONE, Instant.parse("2026-03-15T00:00:00Z"))));
-    String ics = eventService.getIcs(PUBLIC_ID);
+    String ics = finalization.getIcs(PUBLIC_ID);
 
     assertTrue(ics.startsWith("BEGIN:VCALENDAR\r\n"));
     assertTrue(ics.contains("VERSION:2.0"));
@@ -216,7 +254,7 @@ class EventServiceCharacterizationTest {
     ResponseStatusException ex =
         assertThrows(
             ResponseStatusException.class,
-            () -> eventService.finalizeEvent(PUBLIC_ID, HOST_TOKEN, new FinalizeRequest(SLOT_TWO)));
+            () -> finalization.finalizeEvent(PUBLIC_ID, HOST_TOKEN, new FinalizeRequest(SLOT_TWO)));
     assertEquals(409, ex.getStatusCode().value());
   }
 
@@ -231,7 +269,7 @@ class EventServiceCharacterizationTest {
         assertThrows(
             ResponseStatusException.class,
             () ->
-                eventService.finalizeEvent(
+                finalization.finalizeEvent(
                     PUBLIC_ID, HOST_TOKEN, new FinalizeRequest(OUT_OF_RANGE_SLOT)));
     assertEquals(400, ex.getStatusCode().value());
   }
@@ -245,7 +283,7 @@ class EventServiceCharacterizationTest {
         assertThrows(
             ResponseStatusException.class,
             () ->
-                eventService.finalizeEvent(
+                finalization.finalizeEvent(
                     PUBLIC_ID, "not-the-host-token", new FinalizeRequest(SLOT_ONE)));
     assertEquals(403, ex.getStatusCode().value());
   }
@@ -262,7 +300,7 @@ class EventServiceCharacterizationTest {
     when(slotService.generateCandidateSlots(event)).thenReturn(List.of(SLOT_ONE, SLOT_TWO));
     when(availabilityRepository.countParticipantsWithAvailability(EVENT_ID)).thenReturn(1L);
 
-    eventService.updateAvailability(
+    participants.updateAvailability(
         PUBLIC_ID,
         "ptok",
         new UpdateAvailabilityRequest(
@@ -289,14 +327,14 @@ class EventServiceCharacterizationTest {
     when(eventRepository.findByPublicId(PUBLIC_ID)).thenReturn(Optional.of(hostOnlyEvent));
 
     ResponseStatusException ex =
-        assertThrows(ResponseStatusException.class, () -> eventService.getResults(PUBLIC_ID));
+        assertThrows(ResponseStatusException.class, () -> results.getResults(PUBLIC_ID));
     assertEquals(403, ex.getStatusCode().value());
 
     when(eventRepository.findByHostToken(HOST_TOKEN)).thenReturn(Optional.of(hostOnlyEvent));
     when(resultCache.get(EVENT_ID, true))
         .thenReturn(new ResultsResponse(PUBLIC_ID, "UTC", 0, 0L, null, true, List.of()));
 
-    ResultsResponse hostView = eventService.getHostResults(HOST_TOKEN);
+    ResultsResponse hostView = results.getHostResults(HOST_TOKEN);
     assertTrue(hostView.participantDetailsVisible());
   }
 }

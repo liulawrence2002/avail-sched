@@ -1,7 +1,11 @@
 package com.goblin.scheduler.web;
 
 import com.goblin.scheduler.dto.*;
-import com.goblin.scheduler.service.EventService;
+import com.goblin.scheduler.service.EventCreationService;
+import com.goblin.scheduler.service.EventQueryService;
+import com.goblin.scheduler.service.FinalizationService;
+import com.goblin.scheduler.service.ParticipantService;
+import com.goblin.scheduler.service.ResultsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,29 +25,42 @@ public class EventController {
   private static final Logger log = LoggerFactory.getLogger(EventController.class);
   private static final String HOST_TOKEN_HEADER = "X-Host-Token";
 
-  private final EventService eventService;
+  private final EventCreationService eventCreationService;
+  private final EventQueryService eventQueryService;
+  private final ParticipantService participantService;
+  private final ResultsService resultsService;
+  private final FinalizationService finalizationService;
 
-  public EventController(EventService eventService) {
-    this.eventService = eventService;
+  public EventController(
+      EventCreationService eventCreationService,
+      EventQueryService eventQueryService,
+      ParticipantService participantService,
+      ResultsService resultsService,
+      FinalizationService finalizationService) {
+    this.eventCreationService = eventCreationService;
+    this.eventQueryService = eventQueryService;
+    this.participantService = participantService;
+    this.resultsService = resultsService;
+    this.finalizationService = finalizationService;
   }
 
   @Operation(summary = "Create a new scheduling event")
   @PostMapping("/events")
   public CreateEventResponse createEvent(@Valid @RequestBody CreateEventRequest request) {
-    return eventService.createEvent(request);
+    return eventCreationService.createEvent(request);
   }
 
   @Operation(summary = "Get event details by public ID")
   @GetMapping("/events/{publicId}")
   public EventDetailResponse getEvent(@PathVariable String publicId) {
-    return eventService.getEvent(publicId);
+    return eventQueryService.getEvent(publicId);
   }
 
   @Operation(summary = "Join an event as a participant")
   @PostMapping("/events/{publicId}/participants")
   public JoinParticipantResponse join(
       @PathVariable String publicId, @Valid @RequestBody JoinParticipantRequest request) {
-    return eventService.joinParticipant(publicId, request);
+    return participantService.joinParticipant(publicId, request);
   }
 
   @Operation(summary = "Save participant availability for an event")
@@ -52,7 +69,7 @@ public class EventController {
       @PathVariable String publicId,
       @PathVariable String token,
       @Valid @RequestBody UpdateAvailabilityRequest request) {
-    eventService.updateAvailability(publicId, token, request);
+    participantService.updateAvailability(publicId, token, request);
     return ResponseEntity.noContent().build();
   }
 
@@ -60,19 +77,19 @@ public class EventController {
   @GetMapping("/events/{publicId}/participants/{token}/availability")
   public ParticipantAvailabilityResponse getParticipantAvailability(
       @PathVariable String publicId, @PathVariable String token) {
-    return eventService.getParticipantAvailability(publicId, token);
+    return participantService.getParticipantAvailability(publicId, token);
   }
 
   @Operation(summary = "Get scored availability results")
   @GetMapping("/events/{publicId}/results")
   public ResultsResponse getResults(@PathVariable String publicId) {
-    return eventService.getResults(publicId);
+    return resultsService.getResults(publicId);
   }
 
   @Operation(summary = "Get scored availability results with participant details by host token")
   @GetMapping("/host/{hostToken}/results")
   public ResultsResponse getHostResults(@PathVariable String hostToken) {
-    return eventService.getHostResults(hostToken);
+    return resultsService.getHostResults(hostToken);
   }
 
   @Operation(
@@ -88,7 +105,28 @@ public class EventController {
       @RequestParam(name = "hostToken", required = false) String queryToken,
       @Valid @RequestBody FinalizeRequest request) {
     String hostToken = resolveHostToken(headerToken, queryToken);
-    return eventService.finalizeEvent(publicId, hostToken, request);
+    return finalizationService.finalizeEvent(publicId, hostToken, request);
+  }
+
+  @Operation(summary = "Get the finalized time slot")
+  @GetMapping("/events/{publicId}/final")
+  public FinalSelectionResponse getFinal(@PathVariable String publicId) {
+    return finalizationService.getFinalSelection(publicId);
+  }
+
+  @Operation(summary = "Download ICS calendar file for finalized event")
+  @GetMapping("/events/{publicId}/final.ics")
+  public ResponseEntity<String> downloadIcs(@PathVariable String publicId) {
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"goblin-scheduler.ics\"")
+        .contentType(MediaType.parseMediaType("text/calendar"))
+        .body(finalizationService.getIcs(publicId));
+  }
+
+  @Operation(summary = "Get event details by host token")
+  @GetMapping("/host/{hostToken}")
+  public EventDetailResponse hostEvent(@PathVariable String hostToken) {
+    return eventQueryService.getHostEvent(hostToken);
   }
 
   private String resolveHostToken(String headerToken, String queryToken) {
@@ -103,26 +141,5 @@ public class EventController {
     }
     throw new ResponseStatusException(
         HttpStatus.BAD_REQUEST, "Missing host token; send the " + HOST_TOKEN_HEADER + " header");
-  }
-
-  @Operation(summary = "Get the finalized time slot")
-  @GetMapping("/events/{publicId}/final")
-  public FinalSelectionResponse getFinal(@PathVariable String publicId) {
-    return eventService.getFinalSelection(publicId);
-  }
-
-  @Operation(summary = "Download ICS calendar file for finalized event")
-  @GetMapping("/events/{publicId}/final.ics")
-  public ResponseEntity<String> downloadIcs(@PathVariable String publicId) {
-    return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"goblin-scheduler.ics\"")
-        .contentType(MediaType.parseMediaType("text/calendar"))
-        .body(eventService.getIcs(publicId));
-  }
-
-  @Operation(summary = "Get event details by host token")
-  @GetMapping("/host/{hostToken}")
-  public EventDetailResponse hostEvent(@PathVariable String hostToken) {
-    return eventService.getHostEvent(hostToken);
   }
 }

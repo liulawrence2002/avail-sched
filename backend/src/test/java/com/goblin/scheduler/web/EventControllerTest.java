@@ -18,7 +18,11 @@ import com.goblin.scheduler.dto.FinalSelectionResponse;
 import com.goblin.scheduler.dto.JoinParticipantResponse;
 import com.goblin.scheduler.dto.ParticipantAvailabilityResponse;
 import com.goblin.scheduler.dto.ResultsResponse;
-import com.goblin.scheduler.service.EventService;
+import com.goblin.scheduler.service.EventCreationService;
+import com.goblin.scheduler.service.EventQueryService;
+import com.goblin.scheduler.service.FinalizationService;
+import com.goblin.scheduler.service.ParticipantService;
+import com.goblin.scheduler.service.ResultsService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -37,11 +41,15 @@ class EventControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockBean private EventService eventService;
+  @MockBean private EventCreationService eventCreationService;
+  @MockBean private EventQueryService eventQueryService;
+  @MockBean private ParticipantService participantService;
+  @MockBean private ResultsService resultsService;
+  @MockBean private FinalizationService finalizationService;
 
   @Test
   void createEvent_returnsResponse() throws Exception {
-    when(eventService.createEvent(any()))
+    when(eventCreationService.createEvent(any()))
         .thenReturn(new CreateEventResponse("pub123", "host456", "http://localhost/host/host456"));
 
     mockMvc
@@ -77,7 +85,7 @@ class EventControllerTest {
             List.of(),
             new EventDetailResponse.StatsView(5, 2),
             null);
-    when(eventService.getEvent("pub123")).thenReturn(response);
+    when(eventQueryService.getEvent("pub123")).thenReturn(response);
 
     mockMvc
         .perform(get("/api/events/pub123"))
@@ -88,7 +96,7 @@ class EventControllerTest {
 
   @Test
   void join_returnsTokenAndParticipantLink() throws Exception {
-    when(eventService.joinParticipant(eq("pub123"), any()))
+    when(participantService.joinParticipant(eq("pub123"), any()))
         .thenReturn(
             new JoinParticipantResponse("tok789", "http://localhost/e/pub123?token=tok789", false));
 
@@ -107,7 +115,7 @@ class EventControllerTest {
 
   @Test
   void updateAvailability_returns204() throws Exception {
-    doNothing().when(eventService).updateAvailability(eq("pub123"), eq("tok789"), any());
+    doNothing().when(participantService).updateAvailability(eq("pub123"), eq("tok789"), any());
 
     mockMvc
         .perform(
@@ -122,7 +130,7 @@ class EventControllerTest {
 
   @Test
   void getParticipantAvailability_returnsSavedItems() throws Exception {
-    when(eventService.getParticipantAvailability("pub123", "tok789"))
+    when(participantService.getParticipantAvailability("pub123", "tok789"))
         .thenReturn(
             new ParticipantAvailabilityResponse(
                 "Alice",
@@ -138,7 +146,7 @@ class EventControllerTest {
 
   @Test
   void getResults_returnsAggregateResponse() throws Exception {
-    when(eventService.getResults("pub123"))
+    when(resultsService.getResults("pub123"))
         .thenReturn(new ResultsResponse("pub123", "UTC", 3, 2L, null, false, List.of()));
 
     mockMvc
@@ -150,7 +158,7 @@ class EventControllerTest {
 
   @Test
   void getResults_hostOnly_returnsForbidden() throws Exception {
-    when(eventService.getResults("pub123"))
+    when(resultsService.getResults("pub123"))
         .thenThrow(
             new ResponseStatusException(
                 HttpStatus.FORBIDDEN, "Results are only available to the host for this event"));
@@ -160,7 +168,7 @@ class EventControllerTest {
 
   @Test
   void getHostResults_returnsNamedResponse() throws Exception {
-    when(eventService.getHostResults("host456"))
+    when(resultsService.getHostResults("host456"))
         .thenReturn(new ResultsResponse("pub123", "UTC", 3, 2L, null, true, List.of()));
 
     mockMvc
@@ -172,7 +180,7 @@ class EventControllerTest {
   @Test
   void finalizeEvent_withHeaderHostToken_returnsResponse() throws Exception {
     Instant slot = Instant.parse("2026-04-01T09:00:00Z");
-    when(eventService.finalizeEvent(eq("pub123"), eq("host456"), any()))
+    when(finalizationService.finalizeEvent(eq("pub123"), eq("host456"), any()))
         .thenReturn(new FinalSelectionResponse("pub123", slot, Instant.now()));
 
     mockMvc
@@ -193,7 +201,7 @@ class EventControllerTest {
     // Phase 1.2 of the launch-readiness plan keeps the query-string path alive for one
     // release so in-flight clients don't break mid-rollout. Phase 1.7+ will remove it.
     Instant slot = Instant.parse("2026-04-01T09:00:00Z");
-    when(eventService.finalizeEvent(eq("pub123"), eq("host456"), any()))
+    when(finalizationService.finalizeEvent(eq("pub123"), eq("host456"), any()))
         .thenReturn(new FinalSelectionResponse("pub123", slot, Instant.now()));
 
     mockMvc
@@ -223,7 +231,7 @@ class EventControllerTest {
 
   @Test
   void downloadIcs_returnsCalendarContentType() throws Exception {
-    when(eventService.getIcs("pub123")).thenReturn("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
+    when(finalizationService.getIcs("pub123")).thenReturn("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
 
     mockMvc
         .perform(get("/api/events/pub123/final.ics"))
