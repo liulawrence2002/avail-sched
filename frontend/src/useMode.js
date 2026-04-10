@@ -190,8 +190,12 @@ export const COPY = {
 export function useMode() {
   const [mode, setMode] = useState(() => localStorage.getItem("mode") || "serious");
 
+  // Single source of truth for the theme: write data-theme to <html> so the [data-theme="…"]
+  // selectors in tokens.css resolve at the root level. Every other component that needs to
+  // know the active mode reads it from this hook; no one else mutates document.documentElement.
   useEffect(() => {
     localStorage.setItem("mode", mode);
+    document.documentElement.dataset.theme = mode;
   }, [mode]);
 
   const copy = useMemo(() => COPY[mode], [mode]);

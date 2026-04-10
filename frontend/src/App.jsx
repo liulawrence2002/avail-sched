@@ -36,7 +36,9 @@ export default function App() {
   }, [location.hash, location.pathname]);
 
   return (
-    <div className={`app-shell flex min-h-screen flex-col ${isLanding ? "app-shell--landing" : "app-shell--product"} ${mode === "goblin" ? "theme-goblin" : "theme-serious"}`}>
+    <div
+      className={`app-shell flex min-h-screen flex-col ${isLanding ? "app-shell--landing" : "app-shell--product"}`}
+    >
       <div className="ambient-ring ambient-ring--one" aria-hidden="true" />
       <div className="ambient-ring ambient-ring--two" aria-hidden="true" />
       <div className="ambient-ring ambient-ring--three" aria-hidden="true" />
