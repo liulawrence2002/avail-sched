@@ -5,15 +5,22 @@ import com.goblin.scheduler.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api")
 @Tag(name = "Events", description = "Event lifecycle: create, join, vote, finalize")
 public class EventController {
+  private static final Logger log = LoggerFactory.getLogger(EventController.class);
+  private static final String HOST_TOKEN_HEADER = "X-Host-Token";
+
   private final EventService eventService;
 
   public EventController(EventService eventService) {
@@ -68,13 +75,34 @@ public class EventController {
     return eventService.getHostResults(hostToken);
   }
 
-  @Operation(summary = "Finalize a time slot for the event")
+  @Operation(
+      summary = "Finalize a time slot for the event",
+      description =
+          "Pass the host token via the X-Host-Token header. The hostToken query parameter is"
+              + " accepted for one release to give callers time to migrate and is logged as"
+              + " deprecated.")
   @PostMapping("/events/{publicId}/finalize")
   public FinalSelectionResponse finalizeEvent(
       @PathVariable String publicId,
-      @RequestParam String hostToken,
+      @RequestHeader(name = HOST_TOKEN_HEADER, required = false) String headerToken,
+      @RequestParam(name = "hostToken", required = false) String queryToken,
       @Valid @RequestBody FinalizeRequest request) {
+    String hostToken = resolveHostToken(headerToken, queryToken);
     return eventService.finalizeEvent(publicId, hostToken, request);
+  }
+
+  private String resolveHostToken(String headerToken, String queryToken) {
+    if (headerToken != null && !headerToken.isBlank()) {
+      return headerToken;
+    }
+    if (queryToken != null && !queryToken.isBlank()) {
+      log.warn(
+          "Host token accepted via deprecated query string; migrate callers to the {} header",
+          HOST_TOKEN_HEADER);
+      return queryToken;
+    }
+    throw new ResponseStatusException(
+        HttpStatus.BAD_REQUEST, "Missing host token; send the " + HOST_TOKEN_HEADER + " header");
   }
 
   @Operation(summary = "Get the finalized time slot")

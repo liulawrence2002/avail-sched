@@ -95,13 +95,14 @@ describe("api helpers", () => {
     expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/host/host-tok/results");
   });
 
-  it("finalizeEvent POSTs with hostToken in query string (current behavior)", async () => {
-    // Phase 1.2 moves this to the X-Host-Token header. This test snapshots current behavior
-    // so the migration is a reviewable delta.
+  it("finalizeEvent POSTs with host token in the X-Host-Token header", async () => {
+    // Phase 1.2 moved the host token from the query string to the X-Host-Token header.
     await api.finalizeEvent("abc", "host tok/+", { slotStartUtc: "2026-04-01T09:00:00Z" });
     const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc/finalize?hostToken=host%20tok%2F%2B");
+    expect(url).toBe("/api/events/abc/finalize");
     expect(options.method).toBe("POST");
+    expect(options.headers["X-Host-Token"]).toBe("host tok/+");
+    expect(options.body).toBe(JSON.stringify({ slotStartUtc: "2026-04-01T09:00:00Z" }));
   });
 
   it("getFinal GETs /events/:publicId/final", async () => {

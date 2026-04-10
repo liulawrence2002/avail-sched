@@ -170,7 +170,28 @@ class EventControllerTest {
   }
 
   @Test
-  void finalizeEvent_returnsResponse() throws Exception {
+  void finalizeEvent_withHeaderHostToken_returnsResponse() throws Exception {
+    Instant slot = Instant.parse("2026-04-01T09:00:00Z");
+    when(eventService.finalizeEvent(eq("pub123"), eq("host456"), any()))
+        .thenReturn(new FinalSelectionResponse("pub123", slot, Instant.now()));
+
+    mockMvc
+        .perform(
+            post("/api/events/pub123/finalize")
+                .header("X-Host-Token", "host456")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"slotStartUtc":"2026-04-01T09:00:00Z"}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.publicId").value("pub123"));
+  }
+
+  @Test
+  void finalizeEvent_withLegacyQueryHostToken_stillAccepted() throws Exception {
+    // Phase 1.2 of the launch-readiness plan keeps the query-string path alive for one
+    // release so in-flight clients don't break mid-rollout. Phase 1.7+ will remove it.
     Instant slot = Instant.parse("2026-04-01T09:00:00Z");
     when(eventService.finalizeEvent(eq("pub123"), eq("host456"), any()))
         .thenReturn(new FinalSelectionResponse("pub123", slot, Instant.now()));
@@ -185,6 +206,19 @@ class EventControllerTest {
                     """))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.publicId").value("pub123"));
+  }
+
+  @Test
+  void finalizeEvent_missingHostToken_returns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/events/pub123/finalize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"slotStartUtc":"2026-04-01T09:00:00Z"}
+                    """))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

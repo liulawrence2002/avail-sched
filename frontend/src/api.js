@@ -36,7 +36,11 @@ export const api = {
   getHostEvent: (hostToken) => request(`/host/${hostToken}`),
   getHostResults: (hostToken) => request(`/host/${hostToken}/results`),
   finalizeEvent: (publicId, hostToken, payload) =>
-    request(`/events/${publicId}/finalize?hostToken=${encodeURIComponent(hostToken)}`, { method: "POST", body: JSON.stringify(payload) }),
+    request(`/events/${publicId}/finalize`, {
+      method: "POST",
+      headers: { "X-Host-Token": hostToken },
+      body: JSON.stringify(payload),
+    }),
   getFinal: (publicId) => request(`/events/${publicId}/final`),
   icsUrl: (publicId) => `${API_BASE}/events/${publicId}/final.ics`,
 };

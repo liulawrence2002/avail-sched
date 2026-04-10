@@ -177,7 +177,7 @@ class EventFlowIntegrationTest {
     mockMvc
         .perform(
             post("/api/events/{publicId}/finalize", publicId)
-                .queryParam("hostToken", hostToken)
+                .header("X-Host-Token", hostToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -210,7 +210,7 @@ class EventFlowIntegrationTest {
     mockMvc
         .perform(
             post("/api/events/{publicId}/finalize", publicId)
-                .queryParam("hostToken", hostToken)
+                .header("X-Host-Token", hostToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
