@@ -1,0 +1,57 @@
+/*
+ * Design tokens.
+ *
+ * The :root block carries the defaults (== the "serious" theme). [data-theme="goblin"]
+ * overrides the accent-related tokens; [data-theme="serious"] re-states the defaults as an
+ * explicit anchor so switching themes at runtime via document.documentElement.dataset.theme
+ * always flips to a known state, never to a half-inherited mix.
+ *
+ * Phase 3.2: tokens.js mirrors these values so Tailwind's theme extension can consume the
+ * same source of truth. When adding or renaming a token, update both files in the same commit.
+ */
+
+:root {
+  --bg: #e9e7e1;
+  --surface: rgba(245, 242, 236, 0.84);
+  --surface-strong: rgba(239, 233, 224, 0.94);
+  --surface-ghost: rgba(255, 255, 255, 0.52);
+  --surface-deep: #1f2c39;
+  --text: #14212d;
+  --muted: #61707d;
+  --line: rgba(20, 33, 45, 0.1);
+  --line-strong: rgba(20, 33, 45, 0.18);
+  --accent-serious: #6f879f;
+  --accent-goblin: #8ea45f;
+  --accent-warm: #caa48a;
+  --accent: var(--accent-serious);
+  --accent-soft: rgba(111, 135, 159, 0.16);
+  --accent-deep: #304659;
+  --glow: rgba(111, 135, 159, 0.22);
+  --shadow-soft: 0 18px 48px rgba(19, 29, 40, 0.08);
+  --shadow-lg: 0 28px 90px rgba(19, 29, 40, 0.1);
+  --shadow-xl: 0 44px 120px rgba(19, 29, 40, 0.14);
+  --radius-xl: 2rem;
+  --radius-lg: 1.5rem;
+  --radius-md: 1.15rem;
+  --font-ui: "Manrope", system-ui, sans-serif;
+  --font-display: "Instrument Serif", Georgia, serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="serious"] {
+  --accent: var(--accent-serious);
+  --accent-soft: rgba(111, 135, 159, 0.16);
+  --accent-deep: #304659;
+  --glow: rgba(111, 135, 159, 0.22);
+}
+
+[data-theme="goblin"] {
+  --accent: var(--accent-goblin);
+  --accent-soft: rgba(142, 164, 95, 0.18);
+  --accent-deep: #53643d;
+  --glow: rgba(202, 164, 138, 0.3);
+}
