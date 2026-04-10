@@ -1,11 +1,9 @@
 package com.goblin.scheduler.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.List;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(Cors cors, String baseUrl) {
-    public record Cors(List<String> allowedOrigins) {}
+  public record Cors(List<String> allowedOrigins) {}
 }
-

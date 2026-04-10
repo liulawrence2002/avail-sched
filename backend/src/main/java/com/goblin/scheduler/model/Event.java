@@ -18,5 +18,4 @@ public record Event(
     LocalTime dailyStartTime,
     LocalTime dailyEndTime,
     String resultsVisibility,
-    Instant createdAt
-) {}
+    Instant createdAt) {}

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -19,5 +18,4 @@ public record CreateEventRequest(
     @NotNull LocalDate endDate,
     @NotNull LocalTime dailyStartTime,
     @NotNull LocalTime dailyEndTime,
-    @Size(max = 32) String resultsVisibility
-) {}
+    @Size(max = 32) String resultsVisibility) {}

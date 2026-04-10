@@ -3,70 +3,85 @@ package com.goblin.scheduler.service;
 import com.goblin.scheduler.dto.ResultsResponse;
 import com.goblin.scheduler.model.Event;
 import com.goblin.scheduler.model.Participant;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ScoringService {
 
-    public List<ResultsResponse.ResultSlot> scoreTopSlots(
-        Event event,
-        List<Instant> candidateSlots,
-        List<Participant> participants,
-        Map<Long, Map<Instant, Double>> availabilityMap,
-        boolean includeParticipantDetails
-    ) {
-        int subSlots = event.durationMinutes() / event.slotMinutes();
-        double maxScore = Math.max(1.0, participants.size() * subSlots);
+  public List<ResultsResponse.ResultSlot> scoreTopSlots(
+      Event event,
+      List<Instant> candidateSlots,
+      List<Participant> participants,
+      Map<Long, Map<Instant, Double>> availabilityMap,
+      boolean includeParticipantDetails) {
+    int subSlots = event.durationMinutes() / event.slotMinutes();
+    double maxScore = Math.max(1.0, participants.size() * subSlots);
 
-        return candidateSlots.stream().map(slot -> {
-            double score = 0.0;
-            int yes = 0;
-            int maybe = 0;
-            int bribe = 0;
-            int no = 0;
-            List<String> canAttend = new ArrayList<>();
-            List<String> cannotAttend = new ArrayList<>();
-            for (Participant participant : participants) {
+    return candidateSlots.stream()
+        .map(
+            slot -> {
+              double score = 0.0;
+              int yes = 0;
+              int maybe = 0;
+              int bribe = 0;
+              int no = 0;
+              List<String> canAttend = new ArrayList<>();
+              List<String> cannotAttend = new ArrayList<>();
+              for (Participant participant : participants) {
                 double participantScore = 0.0;
                 for (int i = 0; i < subSlots; i++) {
-                    Instant subSlot = slot.plusSeconds((long) event.slotMinutes() * 60 * i);
-                    participantScore += availabilityMap.getOrDefault(participant.id(), Map.of()).getOrDefault(subSlot, 0.0);
+                  Instant subSlot = slot.plusSeconds((long) event.slotMinutes() * 60 * i);
+                  participantScore +=
+                      availabilityMap
+                          .getOrDefault(participant.id(), Map.of())
+                          .getOrDefault(subSlot, 0.0);
                 }
                 double normalized = subSlots == 0 ? 0.0 : participantScore / subSlots;
                 score += participantScore;
                 if (normalized >= 0.99) {
-                    yes++;
-                    if (includeParticipantDetails) {
-                        canAttend.add(participant.displayName());
-                    }
+                  yes++;
+                  if (includeParticipantDetails) {
+                    canAttend.add(participant.displayName());
+                  }
                 } else if (normalized >= 0.59) {
-                    maybe++;
-                    if (includeParticipantDetails) {
-                        canAttend.add(participant.displayName());
-                    }
+                  maybe++;
+                  if (includeParticipantDetails) {
+                    canAttend.add(participant.displayName());
+                  }
                 } else if (normalized >= 0.29) {
-                    bribe++;
-                    if (includeParticipantDetails) {
-                        cannotAttend.add(participant.displayName() + " (snacks may help)");
-                    }
+                  bribe++;
+                  if (includeParticipantDetails) {
+                    cannotAttend.add(participant.displayName() + " (snacks may help)");
+                  }
                 } else {
-                    no++;
-                    if (includeParticipantDetails) {
-                        cannotAttend.add(participant.displayName());
-                    }
+                  no++;
+                  if (includeParticipantDetails) {
+                    cannotAttend.add(participant.displayName());
+                  }
                 }
-            }
-            return new ResultsResponse.ResultSlot(slot, round(score), round((score / maxScore) * 100.0), yes, maybe, bribe, no, canAttend, cannotAttend);
-        }).sorted(Comparator.comparingDouble(ResultsResponse.ResultSlot::score).reversed()).limit(5).toList();
-    }
+              }
+              return new ResultsResponse.ResultSlot(
+                  slot,
+                  round(score),
+                  round((score / maxScore) * 100.0),
+                  yes,
+                  maybe,
+                  bribe,
+                  no,
+                  canAttend,
+                  cannotAttend);
+            })
+        .sorted(Comparator.comparingDouble(ResultsResponse.ResultSlot::score).reversed())
+        .limit(5)
+        .toList();
+  }
 
-    private double round(double value) {
-        return Math.round(value * 100.0) / 100.0;
-    }
+  private double round(double value) {
+    return Math.round(value * 100.0) / 100.0;
+  }
 }

@@ -1,7 +1,10 @@
 plugins {
     id 'java'
+    id 'jacoco'
+    id 'checkstyle'
     id 'org.springframework.boot' version '3.3.8'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'com.goblin'
@@ -36,6 +39,7 @@ tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'integration'
     }
+    finalizedBy jacocoTestReport
 }
 
 tasks.register('integrationTest', Test) {
@@ -47,4 +51,56 @@ tasks.register('integrationTest', Test) {
     useJUnitPlatform {
         includeTags 'integration'
     }
+}
+
+spotless {
+    java {
+        target 'src/**/*.java'
+        googleJavaFormat('1.23.0')
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+        toggleOffOn()
+    }
+}
+
+checkstyle {
+    toolVersion = '10.18.2'
+    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
+    maxWarnings = Integer.MAX_VALUE
+    // Loose initial gate — violations are reported but do not fail the build.
+    // Phase 4 of the launch-readiness plan flips this to false and expands the rule set.
+    ignoreFailures = true
+    showViolations = true
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                // Loose initial gate (~40% instruction) per plan Phase 0.3.
+                // Raised to 70% in Phase 2 and 75% in Phase 4.
+                minimum = 0.40
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn jacocoTestCoverageVerification
 }

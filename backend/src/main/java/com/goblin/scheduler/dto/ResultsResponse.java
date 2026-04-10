@@ -10,22 +10,17 @@ public record ResultsResponse(
     long respondentCount,
     FinalView finalSelection,
     boolean participantDetailsVisible,
-    List<ResultSlot> topSlots
-) {
-    public record FinalView(
-        Instant slotStartUtc,
-        Instant finalizedAt
-    ) {}
+    List<ResultSlot> topSlots) {
+  public record FinalView(Instant slotStartUtc, Instant finalizedAt) {}
 
-    public record ResultSlot(
-        Instant slotStartUtc,
-        double score,
-        double percentOfMax,
-        int yesCount,
-        int maybeCount,
-        int bribeCount,
-        int noCount,
-        List<String> canAttend,
-        List<String> cannotAttend
-    ) {}
+  public record ResultSlot(
+      Instant slotStartUtc,
+      double score,
+      double percentOfMax,
+      int yesCount,
+      int maybeCount,
+      int bribeCount,
+      int noCount,
+      List<String> canAttend,
+      List<String> cannotAttend) {}
 }

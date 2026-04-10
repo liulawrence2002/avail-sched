@@ -14,35 +14,37 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableConfigurationProperties(AppProperties.class)
 public class AppConfig {
 
-    @Bean
-    CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("results");
-    }
+  @Bean
+  CacheManager cacheManager() {
+    return new ConcurrentMapCacheManager("results");
+  }
 
-    @Bean
-    WebMvcConfigurer webMvcConfigurer(AppProperties properties) {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                    .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
-                    .allowedMethods("GET", "POST", "PUT", "OPTIONS")
-                    .allowedHeaders("*");
-                registry.addMapping("/actuator/**")
-                    .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
-                    .allowedMethods("GET")
-                    .allowedHeaders("*");
-                registry.addMapping("/swagger-ui/**")
-                    .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
-                    .allowedMethods("GET")
-                    .allowedHeaders("*");
-            }
-        };
-    }
+  @Bean
+  WebMvcConfigurer webMvcConfigurer(AppProperties properties) {
+    return new WebMvcConfigurer() {
+      @Override
+      public void addCorsMappings(CorsRegistry registry) {
+        registry
+            .addMapping("/api/**")
+            .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
+            .allowedMethods("GET", "POST", "PUT", "OPTIONS")
+            .allowedHeaders("*");
+        registry
+            .addMapping("/actuator/**")
+            .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
+            .allowedMethods("GET")
+            .allowedHeaders("*");
+        registry
+            .addMapping("/swagger-ui/**")
+            .allowedOrigins(properties.cors().allowedOrigins().toArray(String[]::new))
+            .allowedMethods("GET")
+            .allowedHeaders("*");
+      }
+    };
+  }
 
-    @Bean
-    OncePerRequestFilter rateLimitFilter() {
-        return new RateLimitFilter();
-    }
+  @Bean
+  OncePerRequestFilter rateLimitFilter() {
+    return new RateLimitFilter();
+  }
 }
-
