@@ -105,22 +105,19 @@ class IcsOutputCharacterizationTest {
   }
 
   @Test
-  void adversarialTitle_200Chars_isEmittedInline() {
-    // Today's implementation does NOT fold long lines (RFC 5545 §3.1 says lines SHOULD be ≤75
-    // octets). Phase 1.3 adds folding. This test snapshots the current unfolded output so the
-    // folding change can be reviewed as a behavioral delta.
+  void adversarialTitle_200Chars_isFoldedPerRfc5545() {
+    // Phase 1.3 introduced line folding via IcsWriter; a 200-char SUMMARY is now split across
+    // multiple ≤75-octet physical lines joined by CRLF + space. Unfolding (stripping the
+    // continuation sequence) restores the original logical line.
     String longTitle = "x".repeat(200);
     String ics = renderIcs(eventWith(longTitle, "Desc"));
 
-    assertTrue(ics.contains("SUMMARY:" + longTitle));
-    // Confirm the title lives entirely on one line (no folding today).
-    long summaryLineLength =
-        ics.lines()
-            .filter(line -> line.startsWith("SUMMARY:"))
-            .mapToInt(String::length)
-            .max()
-            .orElse(0);
-    assertTrue(summaryLineLength >= 208, "Expected current unfolded SUMMARY line ≥208 chars");
+    for (String physical : ics.split("\r\n", -1)) {
+      int octets = physical.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+      assertTrue(octets <= 75, "Physical line '" + physical + "' is " + octets + " octets");
+    }
+    String unfolded = ics.replace("\r\n ", "");
+    assertTrue(unfolded.contains("SUMMARY:" + longTitle));
   }
 
   @Test

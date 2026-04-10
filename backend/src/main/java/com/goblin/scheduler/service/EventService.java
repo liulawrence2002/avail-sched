@@ -12,12 +12,12 @@ import com.goblin.scheduler.repo.EventRepository;
 import com.goblin.scheduler.repo.EventStatsRepository;
 import com.goblin.scheduler.repo.FinalSelectionRepository;
 import com.goblin.scheduler.repo.ParticipantRepository;
+import com.goblin.scheduler.util.IcsWriter;
 import com.goblin.scheduler.util.TextSanitizer;
 import com.goblin.scheduler.util.TokenGenerator;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,10 +32,7 @@ public class EventService {
   private static final Set<Integer> ALLOWED_DURATIONS = Set.of(30, 60, 90);
   private static final Set<String> ALLOWED_RESULTS_VISIBILITIES =
       Set.of("aggregate_public", "host_only");
-  private static final DateTimeFormatter ICS_DATE =
-      DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
-          .withLocale(Locale.US)
-          .withZone(ZoneId.of("UTC"));
+  private static final String DEFAULT_ICS_DESCRIPTION = "Scheduled with Goblin Scheduler";
 
   private final EventRepository eventRepository;
   private final ParticipantRepository participantRepository;
@@ -208,26 +205,17 @@ public class EventService {
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No finalized slot yet"));
     Instant end = selection.slotStartUtc().plusSeconds(event.durationMinutes() * 60L);
-    return String.join(
-        "\r\n",
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Goblin Scheduler//EN",
-        "BEGIN:VEVENT",
-        "UID:%s@goblin-scheduler".formatted(event.publicId()),
-        "DTSTAMP:%s".formatted(ICS_DATE.format(Instant.now())),
-        "DTSTART:%s".formatted(ICS_DATE.format(selection.slotStartUtc())),
-        "DTEND:%s".formatted(ICS_DATE.format(end)),
-        "SUMMARY:%s".formatted(sanitizeIcs(event.title())),
-        "DESCRIPTION:%s"
-            .formatted(
-                sanitizeIcs(
-                    event.description() == null
-                        ? "Scheduled with Goblin Scheduler"
-                        : event.description())),
-        "END:VEVENT",
-        "END:VCALENDAR",
-        "");
+    String description =
+        (event.description() == null || event.description().isBlank())
+            ? DEFAULT_ICS_DESCRIPTION
+            : event.description();
+    return IcsWriter.writeVEvent(
+        event.publicId() + "@goblin-scheduler",
+        event.title(),
+        description,
+        selection.slotStartUtc(),
+        end,
+        Instant.now());
   }
 
   public Event requireEventByHostToken(String hostToken) {
@@ -357,15 +345,6 @@ public class EventService {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Use a valid IANA timezone, like America/New_York");
     }
-  }
-
-  private String sanitizeIcs(String value) {
-    String normalized = value.replace("\r\n", "\n").replace("\r", "\n");
-    return normalized
-        .replace("\\", "\\\\")
-        .replace(",", "\\,")
-        .replace(";", "\\;")
-        .replace("\n", "\\n");
   }
 
   private String normalizeResultsVisibility(String requestedVisibility) {
