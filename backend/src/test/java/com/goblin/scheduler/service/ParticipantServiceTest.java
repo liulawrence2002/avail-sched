@@ -158,7 +158,7 @@ class ParticipantServiceTest {
 
     verify(availabilityRepository).replaceForParticipant(eq(1L), eq(2L), any());
     verify(eventStatsRepository).setRespondentCount(1L, 1L);
-    verify(resultCache).evict(1L);
+    verify(resultCache).evictAfterCommit(1L);
   }
 
   @Test

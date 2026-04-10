@@ -196,7 +196,7 @@ class EventServiceCharacterizationTest {
         "participant-tok",
         new UpdateAvailabilityRequest(List.of(new AvailabilityItem(SLOT_ONE, 1.0))));
     verify(availabilityRepository).replaceForParticipant(eq(EVENT_ID), eq(7L), any());
-    verify(resultCache).evict(EVENT_ID);
+    verify(resultCache).evictAfterCommit(EVENT_ID);
 
     // --- results ---
     when(resultCache.get(EVENT_ID, false)).thenReturn(null);

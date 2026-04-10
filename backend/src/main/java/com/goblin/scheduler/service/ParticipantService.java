@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -28,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
  * {@code EventService} in Phase 2.2.
  */
 @Service
+@Transactional
 public class ParticipantService {
 
   private final EventQueryService eventQueryService;
@@ -92,6 +94,7 @@ public class ParticipantService {
         participant.token(), participantLink(event.publicId(), participant.token()), false);
   }
 
+  @Transactional(readOnly = true)
   public ParticipantAvailabilityResponse getParticipantAvailability(String publicId, String token) {
     Event event = eventQueryService.requireEvent(publicId);
     Participant participant =
@@ -127,7 +130,7 @@ public class ParticipantService {
     availabilityRepository.replaceForParticipant(event.id(), participant.id(), records);
     eventStatsRepository.setRespondentCount(
         event.id(), availabilityRepository.countParticipantsWithAvailability(event.id()));
-    resultCache.evict(event.id());
+    resultCache.evictAfterCommit(event.id());
   }
 
   private void ensureVotingOpen(long eventId) {

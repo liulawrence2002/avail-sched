@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -27,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
  * flag) so the host and public views can coexist without cache interference.
  */
 @Service
+@Transactional(readOnly = true)
 public class ResultsService {
 
   private final EventQueryService eventQueryService;

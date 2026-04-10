@@ -67,7 +67,7 @@ class FinalizationServiceTest {
         service.finalizeEvent("pub123", "host456", new FinalizeRequest(SLOT));
 
     assertEquals("pub123", response.publicId());
-    verify(resultCache).evict(1L);
+    verify(resultCache).evictAfterCommit(1L);
   }
 
   @Test

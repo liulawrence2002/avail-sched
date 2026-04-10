@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
  * /host/{hostToken}}, which is why it injects the stats / final-selection / slot repositories.
  */
 @Service
+@Transactional(readOnly = true)
 public class EventQueryService {
 
   private final EventRepository eventRepository;
@@ -41,6 +43,7 @@ public class EventQueryService {
     this.slotService = slotService;
   }
 
+  @Transactional
   public EventDetailResponse getEvent(String publicId) {
     Event event = requireEvent(publicId);
     return buildEventDetailResponse(event, true);

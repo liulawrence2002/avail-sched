@@ -9,6 +9,7 @@ import com.goblin.scheduler.util.IcsWriter;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
  * {@code EventService} in Phase 2.2.
  */
 @Service
+@Transactional(readOnly = true)
 public class FinalizationService {
 
   private static final String DEFAULT_ICS_DESCRIPTION = "Scheduled with Goblin Scheduler";
@@ -36,6 +38,7 @@ public class FinalizationService {
     this.resultCache = resultCache;
   }
 
+  @Transactional
   public FinalSelectionResponse finalizeEvent(
       String publicId, String hostToken, FinalizeRequest request) {
     Event event = eventQueryService.requireEvent(publicId);
@@ -50,7 +53,7 @@ public class FinalizationService {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Slot is not valid for this event");
     }
     FinalSelection selection = finalSelectionRepository.save(event.id(), request.slotStartUtc());
-    resultCache.evict(event.id());
+    resultCache.evictAfterCommit(event.id());
     return new FinalSelectionResponse(publicId, selection.slotStartUtc(), selection.finalizedAt());
   }
 

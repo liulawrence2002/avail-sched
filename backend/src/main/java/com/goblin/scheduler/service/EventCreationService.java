@@ -14,10 +14,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /** Validates and persists new events. Pulled out of the old {@code EventService} in Phase 2.2. */
 @Service
+@Transactional
 public class EventCreationService {
 
   private final EventRepository eventRepository;
