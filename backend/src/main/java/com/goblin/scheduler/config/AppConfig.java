@@ -37,7 +37,7 @@ public class AppConfig {
   }
 
   @Bean
-  OncePerRequestFilter rateLimitFilter() {
-    return new RateLimitFilter();
+  OncePerRequestFilter rateLimitFilter(AppProperties properties) {
+    return new RateLimitFilter(properties.rateLimit().trustedProxies());
   }
 }
