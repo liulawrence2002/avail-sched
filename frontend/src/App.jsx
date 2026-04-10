@@ -1,4 +1,5 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import CreatePage from "./pages/CreatePage";
 import EventPage from "./pages/EventPage";
@@ -9,44 +10,39 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Footer from "./components/Footer";
+import FloatingNav from "./components/FloatingNav";
 import { useMode } from "./useMode";
 
 export default function App() {
+  const location = useLocation();
   const { mode, toggleMode, copy } = useMode();
-  const headerLabel = mode === "goblin" ? "Reliable scheduling with optional cave moss" : "Scheduling that feels ready to share";
+  const isLanding = location.pathname === "/";
+
+  useEffect(() => {
+    const targetId = location.hash.replace("#", "");
+
+    if (!targetId) {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }, [location.hash, location.pathname]);
 
   return (
-    <div className={`app-shell flex min-h-screen flex-col ${mode === "goblin" ? "theme-goblin" : "theme-serious"}`}>
+    <div className={`app-shell flex min-h-screen flex-col ${isLanding ? "app-shell--landing" : "app-shell--product"} ${mode === "goblin" ? "theme-goblin" : "theme-serious"}`}>
       <div className="ambient-ring ambient-ring--one" aria-hidden="true" />
       <div className="ambient-ring ambient-ring--two" aria-hidden="true" />
       <div className="ambient-ring ambient-ring--three" aria-hidden="true" />
 
-      <header className="site-header">
-        <div className="mx-auto max-w-6xl px-4 lg:px-6">
-          <div className="site-header-inner flex items-center justify-between gap-3 px-4 py-3 md:px-6">
-            <Link to="/" className="wordmark">
-              <span className="wordmark-mark" aria-hidden="true">
-                G
-              </span>
-              <span>
-                <span className="wordmark-label">{headerLabel}</span>
-                <span className="wordmark-title">Goblin Scheduler</span>
-              </span>
-            </Link>
+      <FloatingNav copy={copy} mode={mode} onToggleMode={toggleMode} />
 
-            <div className="flex items-center gap-2">
-              <Link className="btn btn-secondary hidden rounded-full px-4 py-2 text-sm font-semibold sm:inline-flex" to="/create">
-                Create Event
-              </Link>
-              <button className="btn btn-tonal rounded-full px-4 py-2 text-sm font-semibold" onClick={toggleMode}>
-                {copy.toggle}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-12 pt-2 lg:px-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-14 pt-28 lg:px-6 lg:pt-32">
         <ErrorBoundary>
           <div className="page-stack">
             <Routes>
@@ -63,7 +59,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      <Footer mode={mode} />
+      <Footer isLanding={isLanding} mode={mode} />
     </div>
   );
 }

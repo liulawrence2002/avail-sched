@@ -1,22 +1,28 @@
 import { Link } from "react-router-dom";
 
-export default function Footer({ mode }) {
+export default function Footer({ isLanding = false, mode }) {
   const footerNote =
     mode === "goblin"
       ? "Serious scheduling underneath, optional goblin energy on top."
       : "A calmer way to coordinate people without making the planning page feel disposable.";
 
   return (
-    <footer className="pb-8">
+    <footer className={`site-footer ${isLanding ? "site-footer--landing" : ""}`}>
       <div className="mx-auto max-w-6xl px-4 lg:px-6">
-        <div className="surface-card surface-ghost flex flex-col gap-4 rounded-[2rem] px-6 py-5 md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="site-footer__frame">
+          <div className="site-footer__copy">
             <p className="eyebrow">Scheduling, with some posture</p>
             <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{footerNote}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-[var(--muted)]">
+          <div className="site-footer__links">
             <span>&copy; {new Date().getFullYear()} Goblin Scheduler</span>
+            <Link to="/" className="hover:text-[var(--text)]">
+              Home
+            </Link>
+            <Link to="/create" className="hover:text-[var(--text)]">
+              Create
+            </Link>
             <Link to="/terms" className="hover:text-[var(--text)]">
               Terms
             </Link>
