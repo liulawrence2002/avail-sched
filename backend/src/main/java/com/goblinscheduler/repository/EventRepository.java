@@ -38,6 +38,8 @@ public class EventRepository {
         e.setEndDate(rs.getDate("end_date").toLocalDate());
         e.setDailyStartTime(rs.getTime("daily_start_time").toLocalTime());
         e.setDailyEndTime(rs.getTime("daily_end_time").toLocalTime());
+        e.setLocation(rs.getString("location"));
+        e.setMeetingUrl(rs.getString("meeting_url"));
         e.setResultsVisibility(rs.getString("results_visibility"));
         e.setViewCount(rs.getInt("view_count"));
         e.setRespondentCount(rs.getInt("respondent_count"));
@@ -46,6 +48,13 @@ public class EventRepository {
         java.sql.Timestamp finalizedAt = rs.getTimestamp("finalized_at");
         e.setFinalizedAt(finalizedAt != null ? finalizedAt.toInstant() : null);
         e.setCreatedAt(rs.getTimestamp("created_at").toInstant());
+        java.sql.Timestamp deletedAt = rs.getTimestamp("deleted_at");
+        e.setDeletedAt(deletedAt != null ? deletedAt.toInstant() : null);
+        java.sql.Timestamp deadline = rs.getTimestamp("deadline");
+        e.setDeadline(deadline != null ? deadline.toInstant() : null);
+        e.setAutoFinalize(rs.getBoolean("auto_finalize"));
+        java.sql.Timestamp reminderSent = rs.getTimestamp("reminder_sent_at");
+        e.setReminderSentAt(reminderSent != null ? reminderSent.toInstant() : null);
         return e;
     };
 
@@ -53,8 +62,8 @@ public class EventRepository {
         String sql = """
             INSERT INTO events (public_id, host_token, title, description, timezone, slot_minutes,
                 duration_minutes, start_date, end_date, daily_start_time, daily_end_time,
-                results_visibility, view_count, respondent_count, final_slot_start, finalized_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                location, meeting_url, results_visibility, view_count, respondent_count, final_slot_start, finalized_at, created_at, deadline, auto_finalize, reminder_sent_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             """;
 
@@ -72,12 +81,17 @@ public class EventRepository {
             ps.setDate(9, Date.valueOf(event.getEndDate()));
             ps.setTime(10, Time.valueOf(event.getDailyStartTime()));
             ps.setTime(11, Time.valueOf(event.getDailyEndTime()));
-            ps.setString(12, event.getResultsVisibility());
-            ps.setInt(13, event.getViewCount());
-            ps.setInt(14, event.getRespondentCount());
-            ps.setTimestamp(15, event.getFinalSlotStart() != null ? Timestamp.from(event.getFinalSlotStart()) : null);
-            ps.setTimestamp(16, event.getFinalizedAt() != null ? Timestamp.from(event.getFinalizedAt()) : null);
-            ps.setTimestamp(17, event.getCreatedAt() != null ? Timestamp.from(event.getCreatedAt()) : Timestamp.from(java.time.Instant.now()));
+            ps.setString(12, event.getLocation());
+            ps.setString(13, event.getMeetingUrl());
+            ps.setString(14, event.getResultsVisibility());
+            ps.setInt(15, event.getViewCount());
+            ps.setInt(16, event.getRespondentCount());
+            ps.setTimestamp(17, event.getFinalSlotStart() != null ? Timestamp.from(event.getFinalSlotStart()) : null);
+            ps.setTimestamp(18, event.getFinalizedAt() != null ? Timestamp.from(event.getFinalizedAt()) : null);
+            ps.setTimestamp(19, event.getCreatedAt() != null ? Timestamp.from(event.getCreatedAt()) : Timestamp.from(java.time.Instant.now()));
+            ps.setTimestamp(20, event.getDeadline() != null ? Timestamp.from(event.getDeadline()) : null);
+            ps.setBoolean(21, event.isAutoFinalize());
+            ps.setTimestamp(22, event.getReminderSentAt() != null ? Timestamp.from(event.getReminderSentAt()) : null);
             return ps;
         }, keyHolder);
 
@@ -86,7 +100,7 @@ public class EventRepository {
     }
 
     public Optional<Event> findByPublicId(String publicId) {
-        String sql = "SELECT * FROM events WHERE public_id = ?";
+        String sql = "SELECT * FROM events WHERE public_id = ? AND deleted_at IS NULL";
         try {
             Event event = jdbcTemplate.queryForObject(sql, eventRowMapper, publicId);
             return Optional.of(event);
@@ -96,7 +110,7 @@ public class EventRepository {
     }
 
     public Optional<Event> findByHostToken(String hostToken) {
-        String sql = "SELECT * FROM events WHERE host_token = ?";
+        String sql = "SELECT * FROM events WHERE host_token = ? AND deleted_at IS NULL";
         try {
             Event event = jdbcTemplate.queryForObject(sql, eventRowMapper, hostToken);
             return Optional.of(event);
@@ -118,5 +132,93 @@ public class EventRepository {
     public void finalizeEvent(Long eventId, java.time.Instant slotStart, java.time.Instant finalizedAt) {
         String sql = "UPDATE events SET final_slot_start = ?, finalized_at = ? WHERE id = ?";
         jdbcTemplate.update(sql, Timestamp.from(slotStart), Timestamp.from(finalizedAt), eventId);
+    }
+
+    public void updateEvent(Event event) {
+        String sql = """
+            UPDATE events SET title = ?, description = ?, timezone = ?, slot_minutes = ?,
+                duration_minutes = ?, start_date = ?, end_date = ?, daily_start_time = ?, daily_end_time = ?,
+                location = ?, meeting_url = ?, results_visibility = ?,
+                deadline = ?, auto_finalize = ?
+            WHERE id = ? AND deleted_at IS NULL
+            """;
+        jdbcTemplate.update(sql,
+                event.getTitle(),
+                event.getDescription(),
+                event.getTimezone(),
+                event.getSlotMinutes(),
+                event.getDurationMinutes(),
+                Date.valueOf(event.getStartDate()),
+                Date.valueOf(event.getEndDate()),
+                Time.valueOf(event.getDailyStartTime()),
+                Time.valueOf(event.getDailyEndTime()),
+                event.getLocation(),
+                event.getMeetingUrl(),
+                event.getResultsVisibility(),
+                event.getDeadline() != null ? Timestamp.from(event.getDeadline()) : null,
+                event.isAutoFinalize(),
+                event.getId()
+        );
+    }
+
+    public void softDelete(Long eventId) {
+        String sql = "UPDATE events SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL";
+        jdbcTemplate.update(sql, Timestamp.from(java.time.Instant.now()), eventId);
+    }
+
+    public List<Event> findByHostTokens(List<String> hostTokens) {
+        if (hostTokens == null || hostTokens.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(hostTokens.size(), "?"));
+        String sql = "SELECT * FROM events WHERE host_token IN (" + placeholders + ") AND deleted_at IS NULL ORDER BY created_at DESC";
+        return jdbcTemplate.query(sql, eventRowMapper, hostTokens.toArray());
+    }
+
+    public int hardDeleteExpired(int retentionDays) {
+        String sql = "DELETE FROM events WHERE deleted_at < NOW() - INTERVAL '? days'";
+        return jdbcTemplate.update(sql, retentionDays);
+    }
+
+    public int archiveStale(int staleDays) {
+        String sql = """
+            UPDATE events SET deleted_at = NOW()
+            WHERE created_at < NOW() - INTERVAL '? days'
+              AND respondent_count = 0
+              AND deleted_at IS NULL
+              AND finalized_at IS NULL
+            """;
+        return jdbcTemplate.update(sql, staleDays);
+    }
+
+    public List<Event> findEventsWithUpcomingDeadlines(int hoursAhead) {
+        String sql = """
+            SELECT * FROM events
+            WHERE deadline IS NOT NULL
+              AND deadline <= NOW() + INTERVAL '? hours'
+              AND deadline > NOW()
+              AND finalized_at IS NULL
+              AND deleted_at IS NULL
+              AND (reminder_sent_at IS NULL OR reminder_sent_at < deadline - INTERVAL '12 hours')
+            """;
+        return jdbcTemplate.query(sql, eventRowMapper, hoursAhead);
+    }
+
+    public List<Event> findEventsPastDeadline() {
+        String sql = """
+            SELECT * FROM events
+            WHERE deadline IS NOT NULL
+              AND deadline <= NOW()
+              AND finalized_at IS NULL
+              AND deleted_at IS NULL
+              AND auto_finalize = TRUE
+              AND respondent_count > 0
+            """;
+        return jdbcTemplate.query(sql, eventRowMapper);
+    }
+
+    public void markReminderSent(Long eventId) {
+        String sql = "UPDATE events SET reminder_sent_at = NOW() WHERE id = ?";
+        jdbcTemplate.update(sql, eventId);
     }
 }

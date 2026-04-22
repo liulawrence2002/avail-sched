@@ -5,6 +5,7 @@ import com.goblinscheduler.exception.*;
 import com.goblinscheduler.model.Event;
 import com.goblinscheduler.model.Participant;
 import com.goblinscheduler.repository.EventRepository;
+import com.goblinscheduler.repository.ParticipantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,12 +26,18 @@ class EventServiceTest {
     @Mock
     private EventRepository eventRepository;
 
+    @Mock
+    private ParticipantRepository participantRepository;
+
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private EventService eventService;
 
     @BeforeEach
     void setUp() {
-        eventService = new EventService(eventRepository, "http://localhost:3001");
+        eventService = new EventService(eventRepository, participantRepository, emailService, "http://localhost:3001");
     }
 
     @Test
@@ -38,7 +45,7 @@ class EventServiceTest {
         CreateEventRequest request = new CreateEventRequest(
                 "Team dinner", "Desc", "America/New_York",
                 30, 60, "2026-05-01", "2026-05-03",
-                "09:00", "18:00", "aggregate_public"
+                "09:00", "18:00", "aggregate_public", null, null, null, null
         );
 
         when(eventRepository.save(any(Event.class))).thenAnswer(inv -> {
@@ -58,7 +65,7 @@ class EventServiceTest {
     void createEvent_invalidDuration() {
         CreateEventRequest request = new CreateEventRequest(
                 "T", null, "UTC", 15, 45,
-                "2026-05-01", "2026-05-01", "09:00", "18:00", null
+                "2026-05-01", "2026-05-01", "09:00", "18:00", null, null, null, null, null
         );
 
         assertThatThrownBy(() -> eventService.createEvent(request))
@@ -70,7 +77,7 @@ class EventServiceTest {
     void createEvent_durationNotDivisible() {
         CreateEventRequest request = new CreateEventRequest(
                 "T", null, "UTC", 20, 30,
-                "2026-05-01", "2026-05-01", "09:00", "18:00", null
+                "2026-05-01", "2026-05-01", "09:00", "18:00", null, null, null, null, null
         );
 
         assertThatThrownBy(() -> eventService.createEvent(request))
@@ -82,7 +89,7 @@ class EventServiceTest {
     void createEvent_endDateBeforeStartDate() {
         CreateEventRequest request = new CreateEventRequest(
                 "T", null, "UTC", 30, 60,
-                "2026-05-03", "2026-05-01", "09:00", "18:00", null
+                "2026-05-03", "2026-05-01", "09:00", "18:00", null, null, null, null, null
         );
 
         assertThatThrownBy(() -> eventService.createEvent(request))
@@ -94,7 +101,7 @@ class EventServiceTest {
     void createEvent_dailyEndBeforeStart() {
         CreateEventRequest request = new CreateEventRequest(
                 "T", null, "UTC", 30, 60,
-                "2026-05-01", "2026-05-01", "18:00", "09:00", null
+                "2026-05-01", "2026-05-01", "18:00", "09:00", null, null, null, null, null
         );
 
         assertThatThrownBy(() -> eventService.createEvent(request))
@@ -106,7 +113,7 @@ class EventServiceTest {
     void createEvent_invalidTimezone() {
         CreateEventRequest request = new CreateEventRequest(
                 "T", null, "NotAZone", 30, 60,
-                "2026-05-01", "2026-05-01", "09:00", "18:00", null
+                "2026-05-01", "2026-05-01", "09:00", "18:00", null, null, null, null, null
         );
 
         assertThatThrownBy(() -> eventService.createEvent(request))

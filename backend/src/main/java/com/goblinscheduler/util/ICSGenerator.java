@@ -39,6 +39,12 @@ public class ICSGenerator {
         if (event.getDescription() != null && !event.getDescription().isBlank()) {
             sb.append("DESCRIPTION:").append(escape(event.getDescription())).append("\r\n");
         }
+        if (event.getLocation() != null && !event.getLocation().isBlank()) {
+            sb.append("LOCATION:").append(escape(event.getLocation())).append("\r\n");
+        }
+        if (event.getMeetingUrl() != null && !event.getMeetingUrl().isBlank()) {
+            sb.append("URL:").append(escape(event.getMeetingUrl())).append("\r\n");
+        }
         sb.append("END:VEVENT\r\n");
         sb.append("END:VCALENDAR\r\n");
 

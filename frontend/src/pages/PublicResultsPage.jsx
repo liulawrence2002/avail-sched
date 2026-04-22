@@ -107,9 +107,35 @@ export default function PublicResultsPage() {
         <h1 className="font-display text-2xl sm:text-3xl text-cream mb-2">
           {event?.title || 'Event Results'}
         </h1>
-        <p className="text-sm text-silver mb-2">
-          Here's how everyone voted. The best slots rise to the top.
-        </p>
+        {event?.description && (
+          <p className="text-sm text-silver mb-2">{event.description}</p>
+        )}
+        {(event?.location || event?.meetingUrl) && (
+          <div className="flex flex-wrap items-center gap-3 mb-2">
+            {event.location && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-charcoal/40 border border-white/5 text-xs text-cream-muted">
+                <svg className="w-3.5 h-3.5 text-silver" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {event.location}
+              </span>
+            )}
+            {event.meetingUrl && (
+              <a
+                href={event.meetingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sapphire/10 border border-sapphire/20 text-xs text-sapphire-bright hover:bg-sapphire/20 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Join Meeting
+              </a>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-3 mb-6 text-xs text-silver-dim">
           <span>{participantCount} invited</span>
           <span>•</span>

@@ -3,7 +3,9 @@ package com.goblinscheduler.controller;
 import com.goblinscheduler.dto.*;
 import com.goblinscheduler.exception.*;
 import com.goblinscheduler.model.Event;
+import java.util.List;
 import com.goblinscheduler.service.AvailabilityService;
+import com.goblinscheduler.service.EventNoteService;
 import com.goblinscheduler.service.EventService;
 import com.goblinscheduler.service.ResultsService;
 import com.goblinscheduler.util.ICSGenerator;
@@ -19,13 +21,16 @@ public class EventController {
     private final EventService eventService;
     private final AvailabilityService availabilityService;
     private final ResultsService resultsService;
+    private final EventNoteService noteService;
 
     public EventController(EventService eventService,
                            AvailabilityService availabilityService,
-                           ResultsService resultsService) {
+                           ResultsService resultsService,
+                           EventNoteService noteService) {
         this.eventService = eventService;
         this.availabilityService = availabilityService;
         this.resultsService = resultsService;
+        this.noteService = noteService;
     }
 
     @PostMapping("/api/events")
@@ -96,5 +101,38 @@ public class EventController {
         headers.set(HttpHeaders.CONTENT_TYPE, "text/calendar; charset=utf-8");
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=event.ics");
         return new ResponseEntity<>(ics, headers, HttpStatus.OK);
+    }
+
+    @PatchMapping("/api/host/{hostToken}")
+    public ResponseEntity<Void> updateEvent(
+            @PathVariable String hostToken,
+            @Valid @RequestBody UpdateEventRequest request) {
+        eventService.updateEvent(hostToken, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/host/{hostToken}")
+    public ResponseEntity<Void> deleteEvent(@PathVariable String hostToken) {
+        eventService.deleteEvent(hostToken);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/events/lookup")
+    public ResponseEntity<List<EventSummaryResponse>> lookupEvents(@Valid @RequestBody LookupEventsRequest request) {
+        return ResponseEntity.ok(eventService.lookupEventsByHostTokens(request.hostTokens()));
+    }
+
+    @GetMapping("/api/events/{publicId}/notes")
+    public ResponseEntity<NoteResponse> getEventNote(@PathVariable String publicId) {
+        return noteService.getNoteByEventPublicId(publicId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
+
+    @PutMapping("/api/host/{hostToken}/notes")
+    public ResponseEntity<NoteResponse> saveEventNote(
+            @PathVariable String hostToken,
+            @Valid @RequestBody SaveNoteRequest request) {
+        return ResponseEntity.ok(noteService.saveOrUpdateNote(hostToken, request));
     }
 }

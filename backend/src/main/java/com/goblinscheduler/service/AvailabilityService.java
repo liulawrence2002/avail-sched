@@ -25,15 +25,18 @@ public class AvailabilityService {
     private final ParticipantRepository participantRepository;
     private final EventRepository eventRepository;
     private final EventService eventService;
+    private final EmailService emailService;
     private final String appUrl;
 
     public AvailabilityService(ParticipantRepository participantRepository,
                                EventRepository eventRepository,
                                EventService eventService,
+                               EmailService emailService,
                                @Value("${goblin.app-url}") String appUrl) {
         this.participantRepository = participantRepository;
         this.eventRepository = eventRepository;
         this.eventService = eventService;
+        this.emailService = emailService;
         this.appUrl = appUrl;
     }
 
@@ -64,6 +67,13 @@ public class AvailabilityService {
         participant.setEmail(request.email() != null && !request.email().isBlank() ? request.email().trim() : null);
 
         participantRepository.save(participant);
+
+        // Send welcome email asynchronously
+        try {
+            emailService.sendParticipantWelcome(event, participant);
+        } catch (Exception e) {
+            // Don't fail the join if email fails
+        }
 
         return new JoinParticipantResponse(
                 participant.getToken(),

@@ -15,12 +15,18 @@ public class Event {
     private LocalDate endDate;
     private LocalTime dailyStartTime;
     private LocalTime dailyEndTime;
+    private String location;
+    private String meetingUrl;
     private String resultsVisibility;
     private int viewCount;
     private int respondentCount;
     private Instant finalSlotStart;
     private Instant finalizedAt;
     private Instant createdAt;
+    private Instant deletedAt;
+    private Instant deadline;
+    private boolean autoFinalize;
+    private Instant reminderSentAt;
 
     public Event() {}
 
@@ -60,6 +66,12 @@ public class Event {
     public LocalTime getDailyEndTime() { return dailyEndTime; }
     public void setDailyEndTime(LocalTime dailyEndTime) { this.dailyEndTime = dailyEndTime; }
 
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public String getMeetingUrl() { return meetingUrl; }
+    public void setMeetingUrl(String meetingUrl) { this.meetingUrl = meetingUrl; }
+
     public String getResultsVisibility() { return resultsVisibility; }
     public void setResultsVisibility(String resultsVisibility) { this.resultsVisibility = resultsVisibility; }
 
@@ -78,7 +90,23 @@ public class Event {
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+
     public boolean isFinalized() {
         return finalSlotStart != null;
     }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public Instant getDeadline() { return deadline; }
+    public void setDeadline(Instant deadline) { this.deadline = deadline; }
+
+    public boolean isAutoFinalize() { return autoFinalize; }
+    public void setAutoFinalize(boolean autoFinalize) { this.autoFinalize = autoFinalize; }
+
+    public Instant getReminderSentAt() { return reminderSentAt; }
+    public void setReminderSentAt(Instant reminderSentAt) { this.reminderSentAt = reminderSentAt; }
 }

@@ -43,6 +43,8 @@ export default function Layout({ children }) {
             <nav className="flex items-center gap-0.5" aria-label="Main navigation">
               <NavLink to="/" label="Home" />
               <NavLink to="/create" label="Create" />
+              <NavLink to="/dashboard" label="My Events" />
+              <NavLink to="/settings" label="Settings" />
               <NavLink to="/privacy" label="Privacy" />
             </nav>
           </div>

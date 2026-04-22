@@ -167,3 +167,143 @@ export async function getFinalSelection(publicId) {
 export function getIcsUrl(publicId) {
   return `${API_BASE}/events/${encodeURIComponent(publicId)}/final.ics`;
 }
+
+/**
+ * PATCH /api/host/{hostToken}
+ * Updates an event.
+ */
+export async function updateEvent(hostToken, eventData) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(eventData),
+  });
+}
+
+/**
+ * DELETE /api/host/{hostToken}
+ * Soft-deletes an event.
+ */
+export async function deleteEvent(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * POST /api/events/lookup
+ * Looks up events by host tokens.
+ */
+export async function lookupEvents(hostTokens) {
+  return apiFetch('/events/lookup', {
+    method: 'POST',
+    body: JSON.stringify({ hostTokens }),
+  });
+}
+
+/**
+ * GET /api/events/{publicId}/notes
+ * Gets the agenda/notes for an event.
+ */
+export async function getEventNotes(publicId) {
+  return apiFetch(`/events/${encodeURIComponent(publicId)}/notes`);
+}
+
+/**
+ * PUT /api/host/{hostToken}/notes
+ * Saves or updates the agenda/notes for an event.
+ */
+export async function saveEventNotes(hostToken, content) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/notes`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+}
+
+/**
+ * GET /api/events/{publicId}/comments
+ * Gets all comments for an event.
+ */
+export async function getEventComments(publicId) {
+  return apiFetch(`/events/${encodeURIComponent(publicId)}/comments`);
+}
+
+/**
+ * POST /api/events/{publicId}/comments
+ * Posts a comment to an event.
+ */
+export async function postEventComment(publicId, token, content, isHost = false) {
+  const headers = {};
+  if (isHost) headers['X-Host-Token'] = token;
+  else headers['X-Participant-Token'] = token;
+  return apiFetch(`/events/${encodeURIComponent(publicId)}/comments`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ content }),
+  });
+}
+
+/**
+ * GET /api/templates
+ * Lists all event templates.
+ */
+export async function listTemplates() {
+  return apiFetch('/templates');
+}
+
+/**
+ * POST /api/templates
+ * Creates a new event template.
+ */
+export async function createTemplate(data) {
+  return apiFetch('/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * DELETE /api/templates/{id}
+ * Deletes a template.
+ */
+export async function deleteTemplate(id) {
+  return apiFetch(`/templates/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * GET /api/oauth/google/url
+ * Gets the Google OAuth authorization URL.
+ */
+export async function getGoogleAuthUrl() {
+  return apiFetch('/oauth/google/url');
+}
+
+/**
+ * POST /api/events/{publicId}/calendar
+ * Adds a finalized event to the host's Google Calendar.
+ */
+export async function addEventToCalendar(publicId, hostToken, providerUserId) {
+  return apiFetch(`/events/${encodeURIComponent(publicId)}/calendar`, {
+    method: 'POST',
+    headers: { 'X-Host-Token': hostToken },
+    body: JSON.stringify({ providerUserId }),
+  });
+}
+
+/**
+ * GET /api/host/{hostToken}/suggestions
+ * Gets AI-style slot suggestions for an event.
+ */
+export async function getSuggestions(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/suggestions`);
+}
+
+/**
+ * POST /api/events/{publicId}/nudge
+ * Sends reminder emails to all non-respondents.
+ */
+export async function nudgeNonRespondents(publicId, hostToken) {
+  return apiFetch(`/events/${encodeURIComponent(publicId)}/nudge`, {
+    method: 'POST',
+    headers: { 'X-Host-Token': hostToken },
+  });
+}

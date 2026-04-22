@@ -1,92 +1,102 @@
-# Quick Start
+# Goblin Scheduler — Quick Start
 
-This project can run fully in Docker. If you are new to Docker, use the commands below and avoid `-v` unless you intentionally want to delete your local database data.
+## What You Need
 
-## What Docker Runs Here
+- **Docker Desktop** (or Docker Engine) — for Postgres
+- **Java 21** — for the backend
+- **Node.js 20+** — for the frontend
 
-- `goblin-frontend`: the website
-- `goblin-backend`: the API
-- `goblin-postgres`: the database
-- `infra_goblin_postgres_data`: the database volume that keeps your local data
+---
 
-## Start The Full App
+## Start Everything
 
-From the repo root:
-
-```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack up --build -d
-```
-
-Open:
-
-- Frontend: http://localhost:3001
-- Backend health: http://localhost:8080/actuator/health
-- Swagger UI: http://localhost:3001/swagger-ui.html
-
-## Stop The App But Keep Your Data
+### 1. Start Postgres (Docker)
 
 ```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack down
+cd infra
+docker compose up -d
 ```
 
-## Rebuild Cleanly But Keep Your Data
+Wait ~5 seconds for it to be ready.
 
-Use this if you want to remove old local app containers/images and start fresh from the latest code:
-
-```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack down --remove-orphans --rmi local
-docker compose -f infra/docker-compose.yml --profile fullstack up --build -d
-```
-
-This keeps the Postgres volume.
-
-## Delete Everything, Including Local Database Data
-
-Only use this if you want a completely fresh database:
-
-```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack down -v --remove-orphans --rmi local
-```
-
-The `-v` flag deletes `infra_goblin_postgres_data`.
-
-## Useful Checks
-
-See running containers:
-
-```powershell
-docker ps
-```
-
-See logs:
-
-```powershell
-docker compose -f infra/docker-compose.yml --profile fullstack logs -f
-```
-
-## Hybrid Dev Option
-
-If you want Docker only for Postgres:
-
-```powershell
-docker compose -f infra/docker-compose.yml up -d postgres
-```
-
-Then run:
+### 2. Start the Backend (Spring Boot)
 
 ```powershell
 cd backend
-.\gradlew.bat bootRun
+./gradlew.bat bootRun --no-daemon
 ```
 
-and:
+Wait for `Tomcat started on port 8080`.
+
+### 3. Start the Frontend (Vite)
 
 ```powershell
 cd frontend
-npm install
 npm run dev
 ```
 
-## More Detail
+Open **http://localhost:5173**
 
-See [README.md](README.md) for the full Docker explanation, overview, troubleshooting, and API summary.
+---
+
+## Stop Everything
+
+### Stop Frontend & Backend
+
+Press `Ctrl + C` in each terminal window.
+
+### Stop Postgres & Remove Data
+
+```powershell
+cd infra
+docker compose down -v
+```
+
+- `docker compose down` — stops the container
+- `-v` — removes the Postgres volume (deletes all data)
+
+---
+
+## URLs
+
+| Service | URL |
+|---------|-----|
+| App | http://localhost:5173 |
+| Backend API | http://localhost:8080 |
+| Postgres | localhost:5432 |
+
+---
+
+## Troubleshooting
+
+**Port already in use?**
+- Find the process: `netstat -ano | findstr :8080` or `findstr :5173`
+- Kill it: `taskkill /PID <PID> /F`
+
+**Backend won't start?**
+- Make sure Java 21 is installed: `java -version`
+- Make sure Postgres is running: `docker ps`
+
+**Frontend build fails?**
+- Make sure Node 20+ is installed: `node -v`
+- Run `npm install` in the `frontend` folder
+
+**Database migrations stuck?**
+- The app auto-runs Flyway migrations on startup. No manual steps needed.
+
+---
+
+## File Overview
+
+```
+avail-sched/
+├── backend/          # Spring Boot + Gradle
+│   ├── src/main/     # Java source code
+│   └── build.gradle  # Dependencies
+├── frontend/         # React + Vite
+│   ├── src/          # JSX source code
+│   └── package.json  # Dependencies
+├── infra/            # Docker Compose
+│   └── docker-compose.yml
+└── QUICK_START.md   # This file
+```

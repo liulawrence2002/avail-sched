@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Finalized</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #0a0a0f; font-family: 'Inter', system-ui, sans-serif; }
+    .container { max-width: 480px; margin: 0 auto; padding: 40px 24px; }
+    .card { background: #111118; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 32px; }
+    .logo { font-family: 'Playfair Display', Georgia, serif; color: #d4af37; font-size: 22px; margin-bottom: 24px; }
+    h1 { color: #f5f0e1; font-size: 20px; font-weight: 600; margin: 0 0 12px; }
+    p { color: #b8b3a8; font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+    .time-box { background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 16px; margin: 16px 0; }
+    .time-box strong { color: #e4c25a; font-size: 16px; }
+    .button { display: inline-block; background: #d4af37; color: #0a0a0f; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; }
+    .button-secondary { display: inline-block; background: transparent; color: #d4af37; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid rgba(212,175,55,0.3); }
+    .footer { text-align: center; margin-top: 24px; color: #5c5954; font-size: 12px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 24px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="logo">Goblin Scheduler</div>
+      <h1>It's settled, <span th:text="${participantName}">Friend</span>!</h1>
+      <p>The host has finalized the time for <strong th:text="${eventTitle}" style="color:#f5f0e1;">Event</strong>.</p>
+      <div class="time-box">
+        <div style="color:#8a8780;font-size:12px;margin-bottom:4px;">Final Time (<span th:text="${timezone}">TZ</span>)</div>
+        <strong th:text="${finalTime}">Monday, January 1 at 9:00 AM</strong>
+      </div>
+      <p th:if="${location}">
+        <strong style="color:#f5f0e1;">Location:</strong> <span th:text="${location}">Room A</span>
+      </p>
+      <p th:if="${meetingUrl}">
+        <a th:href="${meetingUrl}" class="button">Join Meeting</a>
+      </p>
+      <div class="divider"></div>
+      <a th:href="${icsLink}" class="button-secondary">📥 Add to Calendar (.ics)</a>
+    </div>
+    <div class="footer">
+      Sent by Goblin Scheduler · <a th:href="${appUrl}" style="color:#5c5954;">Open App</a>
+    </div>
+  </div>
+</body>
+</html>

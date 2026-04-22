@@ -1,0 +1,2 @@
+ALTER TABLE events
+    ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE;

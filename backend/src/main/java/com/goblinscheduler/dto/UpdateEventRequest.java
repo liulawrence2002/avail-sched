@@ -2,7 +2,7 @@ package com.goblinscheduler.dto;
 
 import jakarta.validation.constraints.*;
 
-public record CreateEventRequest(
+public record UpdateEventRequest(
     @NotBlank(message = "Title is required")
     @Size(max = 160, message = "Title must be at most 160 characters")
     String title,
@@ -39,9 +39,5 @@ public record CreateEventRequest(
     @Size(max = 500, message = "Meeting URL must be at most 500 characters")
     String meetingUrl,
 
-    String resultsVisibility,
-
-    String deadline,
-
-    Boolean autoFinalize
+    String resultsVisibility
 ) {}

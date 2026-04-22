@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createEvent } from '../api.js';
+import { createEvent, listTemplates, createTemplate, deleteTemplate } from '../api.js';
+import { saveHostToken } from './DashboardPage.jsx';
 import { useAppState } from '../hooks/useAppState';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -25,7 +26,8 @@ export default function CreateEventPage() {
   const [titleError, setTitleError] = useState('');
 
   // Scheduling parameters
-  const [timezone, setTimezone] = useState('America/New_York');
+  const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [timezone, setTimezone] = useState(detectedTimezone);
   const [slotMinutes, setSlotMinutes] = useState(30);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [startDate, setStartDate] = useState('');
@@ -33,8 +35,57 @@ export default function CreateEventPage() {
   const [dailyStartTime, setDailyStartTime] = useState('09:00');
   const [dailyEndTime, setDailyEndTime] = useState('18:00');
   const [resultsVisibility, setResultsVisibility] = useState('aggregate_public');
+  const [location, setLocation] = useState('');
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [autoFinalize, setAutoFinalize] = useState(false);
 
   const [scheduleErrors, setScheduleErrors] = useState({});
+
+  // Templates
+  const [templates, setTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  useEffect(() => {
+    if (step !== 2) return;
+    listTemplates().then(r => { if (r.ok) setTemplates(r.data); });
+  }, [step]);
+
+  const applyTemplate = (t) => {
+    if (t.timezone) setTimezone(t.timezone);
+    if (t.slotMinutes) setSlotMinutes(t.slotMinutes);
+    if (t.durationMinutes) setDurationMinutes(t.durationMinutes);
+    if (t.dailyStartTime) setDailyStartTime(t.dailyStartTime);
+    if (t.dailyEndTime) setDailyEndTime(t.dailyEndTime);
+    if (t.resultsVisibility) setResultsVisibility(t.resultsVisibility);
+    if (t.location) setLocation(t.location);
+    if (t.meetingUrl) setMeetingUrl(t.meetingUrl);
+  };
+
+  const handleSaveTemplate = async () => {
+    const name = templateName.trim();
+    if (!name) return;
+    setSavingTemplate(true);
+    const res = await createTemplate({
+      name,
+      description: description.trim() || undefined,
+      timezone,
+      slotMinutes: Number(slotMinutes),
+      durationMinutes: Number(durationMinutes),
+      dailyStartTime,
+      dailyEndTime,
+      resultsVisibility,
+      location: location.trim() || undefined,
+      meetingUrl: meetingUrl.trim() || undefined,
+    });
+    if (res.ok) {
+      setTemplates(prev => [res.data, ...prev]);
+      setTemplateName('');
+    }
+    setSavingTemplate(false);
+  };
 
   const validateStep1 = () => {
     let valid = true;
@@ -85,7 +136,11 @@ export default function CreateEventPage() {
       endDate,
       dailyStartTime,
       dailyEndTime,
+      location: location.trim() || undefined,
+      meetingUrl: meetingUrl.trim() || undefined,
       resultsVisibility,
+      deadline: deadline ? new Date(deadline).toISOString() : undefined,
+      autoFinalize: autoFinalize || undefined,
     });
 
     setLoading(false);
@@ -97,6 +152,7 @@ export default function CreateEventPage() {
     }
 
     const { hostToken } = result.data;
+    saveHostToken(hostToken, title.trim());
     // Navigate to host workspace
     navigate(`/host/${hostToken}`);
   };
@@ -170,6 +226,46 @@ export default function CreateEventPage() {
                 Define the date range and daily window. The backend will generate all candidate slots automatically.
               </p>
             </div>
+
+            {/* Templates */}
+            {templates.length > 0 && (
+              <div className="bg-charcoal/30 border border-white/5 rounded-xl p-4">
+                <button
+                  onClick={() => setShowTemplates(s => !s)}
+                  className="flex items-center gap-2 text-sm font-medium text-gold hover:text-gold-bright transition-colors"
+                >
+                  <svg className={`w-4 h-4 transition-transform ${showTemplates ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  📋 Load from Template ({templates.length})
+                </button>
+                {showTemplates && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {templates.map(t => (
+                      <div key={t.id} className="flex items-center gap-2 bg-charcoal/60 border border-white/10 rounded-lg px-3 py-2">
+                        <button
+                          onClick={() => applyTemplate(t)}
+                          className="text-sm text-cream hover:text-gold transition-colors"
+                          title={`${t.dailyStartTime || '09:00'}-${t.dailyEndTime || '18:00'}, ${t.slotMinutes || 30}min slots`}
+                        >
+                          {t.name}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await deleteTemplate(t.id);
+                            setTemplates(prev => prev.filter(x => x.id !== t.id));
+                          }}
+                          className="text-xs text-crimson hover:text-crimson-bright"
+                          title="Delete template"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
@@ -263,13 +359,31 @@ export default function CreateEventPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-cream-muted tracking-wide">Timezone</label>
+              <label className="text-sm font-medium text-cream-muted tracking-wide">
+                Timezone <span className="text-xs text-silver-dim font-normal">(auto-detected)</span>
+              </label>
               <input
                 type="text"
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 placeholder="America/New_York"
                 className="w-full px-4 py-3 rounded-xl bg-charcoal/60 border border-white/10 text-cream placeholder-silver-dim/60 transition-all hover:border-white/20 focus:border-gold/50 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Location (optional)"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g., Conference Room A"
+              />
+              <Input
+                label="Meeting URL (optional)"
+                type="url"
+                value={meetingUrl}
+                onChange={(e) => setMeetingUrl(e.target.value)}
+                placeholder="https://zoom.us/j/..."
               />
             </div>
 
@@ -301,7 +415,53 @@ export default function CreateEventPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-cream-muted tracking-wide">Response Deadline (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-charcoal/60 border border-white/10 text-cream transition-all hover:border-white/20 focus:border-gold/50 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center">
+                <label className="flex items-center gap-2 px-4 py-3 rounded-xl bg-charcoal/40 border border-white/5 cursor-pointer hover:border-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={autoFinalize}
+                    onChange={(e) => setAutoFinalize(e.target.checked)}
+                    className="accent-gold"
+                  />
+                  <span className="text-sm text-cream">Auto-finalize when deadline hits</span>
+                </label>
+              </div>
+            </div>
+
             {apiError && <ErrorMessage message={apiError} onRetry={handleSubmit} />}
+
+            {/* Save as Template */}
+            <div className="bg-charcoal/30 border border-white/5 rounded-xl p-4">
+              <p className="text-sm font-medium text-cream-muted mb-2">💾 Save this configuration as a template for future events</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  placeholder="Template name..."
+                  className="flex-1 px-4 py-2 rounded-lg bg-charcoal/60 border border-white/10 text-cream text-sm placeholder-silver-dim/60 focus:outline-none focus:border-gold/50"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSaveTemplate}
+                  loading={savingTemplate}
+                  disabled={!templateName.trim()}
+                >
+                  Save Template
+                </Button>
+              </div>
+            </div>
 
             <div className="flex justify-between pt-4 border-t border-white/5">
               <Button variant="ghost" onClick={() => setStep(1)}>

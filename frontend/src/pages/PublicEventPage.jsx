@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
-import { getEvent, joinParticipant, getAvailability, saveAvailability } from '../api.js';
+import { getEvent, joinParticipant, getAvailability, saveAvailability, getEventNotes } from '../api.js';
+import EventCommentsPanel from '../components/EventCommentsPanel';
 import { useAppState } from '../hooks/useAppState';
 import { useLocalStorage } from '../hooks';
 import Button from '../components/Button';
@@ -46,6 +47,8 @@ export default function PublicEventPage() {
   const [event, setEvent] = useState(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [eventError, setEventError] = useState(null);
+  const [notes, setNotes] = useState(null);
+  const [showNotes, setShowNotes] = useState(false);
 
   const tokenKey = `goblin_participant_${publicId}`;
   const [storedToken, setStoredToken] = useLocalStorage(tokenKey, null);
@@ -241,6 +244,32 @@ export default function PublicEventPage() {
           {event.description && (
             <p className="text-sm text-silver leading-relaxed">{event.description}</p>
           )}
+          {(event.location || event.meetingUrl) && (
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              {event.location && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-charcoal/40 border border-white/5 text-xs text-cream-muted">
+                  <svg className="w-3.5 h-3.5 text-silver" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {event.location}
+                </span>
+              )}
+              {event.meetingUrl && (
+                <a
+                  href={event.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sapphire/10 border border-sapphire/20 text-xs text-sapphire-bright hover:bg-sapphire/20 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Join Meeting
+                </a>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-3 text-xs text-silver-dim">
             <span>📅</span>
             <span>
@@ -251,6 +280,26 @@ export default function PublicEventPage() {
             <span>{event.durationMinutes} min slots</span>
           </div>
         </div>
+
+        {/* Agenda / Notes */}
+        {notes && (
+          <div className="mb-6">
+            <button
+              onClick={() => setShowNotes((s) => !s)}
+              className="flex items-center gap-2 text-sm font-medium text-gold hover:text-gold-bright transition-colors"
+            >
+              <svg className={`w-4 h-4 transition-transform ${showNotes ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              Agenda & Notes
+            </button>
+            {showNotes && (
+              <div className="mt-2 p-4 rounded-xl bg-charcoal/30 border border-white/5 text-sm text-cream-muted whitespace-pre-wrap leading-relaxed">
+                {notes.content}
+              </div>
+            )}
+          </div>
+        )}
 
         {step === 'join' && (
           <div className="space-y-5">
@@ -381,6 +430,17 @@ export default function PublicEventPage() {
                 Save Availability
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Discussion */}
+        {storedToken && (
+          <div className="mt-6">
+            <EventCommentsPanel
+              publicId={publicId}
+              participantToken={storedToken}
+              title={event.title}
+            />
           </div>
         )}
       </Card>

@@ -13,6 +13,8 @@ public record EventDetailResponse(
     String endDate,
     String dailyStartTime,
     String dailyEndTime,
+    String location,
+    String meetingUrl,
     String resultsVisibility,
     List<String> candidateSlotsUtc,
     StatsDto stats,
