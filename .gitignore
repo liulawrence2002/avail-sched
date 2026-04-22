@@ -1,15 +1,56 @@
-backend/.gradle/
-backend/build/
-.gradle-cache/
+# Dependencies
 frontend/node_modules/
+backend/.gradle/
+.gradle-cache/
+
+# Build outputs
+backend/build/
+backend/out/
 frontend/dist/
 frontend/coverage/
+frontend/.vite/
+
+# IDE
 .idea/
+*.iml
+*.ipr
+*.iws
 .vscode/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & runtime
 *.log
 *.pid
+*.seed
+*.pid.lock
+
+# Environment
 .env
+.env.local
+.env.*.local
 backend/.env
 frontend/.env.local
 infra/.env
+
+# Test & temp
+*.tmp
+*.temp
+*.cache
+.cache/
+tmp/
+temp/
+
+# Spring Boot
+spring-boot-devtools.properties
+
+# Misc
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar

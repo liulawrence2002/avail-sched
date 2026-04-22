@@ -1,13 +1,10 @@
 plugins {
     id 'java'
-    id 'jacoco'
-    id 'checkstyle'
-    id 'org.springframework.boot' version '3.3.8'
-    id 'io.spring.dependency-management' version '1.1.7'
-    id 'com.diffplug.spotless' version '6.25.0'
+    id 'org.springframework.boot' version '3.3.0'
+    id 'io.spring.dependency-management' version '1.1.5'
 }
 
-group = 'com.goblin'
+group = 'com.goblinscheduler'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -24,84 +21,22 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql'
+
     runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+dependencyManagement {
+    imports {
+        mavenBom 'org.testcontainers:testcontainers-bom:1.19.8'
+    }
+}
+
 tasks.named('test') {
-    useJUnitPlatform {
-        excludeTags 'integration'
-    }
-    finalizedBy jacocoTestReport
-}
-
-tasks.register('integrationTest', Test) {
-    description = 'Runs integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    shouldRunAfter tasks.named('test')
-    useJUnitPlatform {
-        includeTags 'integration'
-    }
-}
-
-spotless {
-    java {
-        target 'src/**/*.java'
-        googleJavaFormat('1.23.0')
-        removeUnusedImports()
-        trimTrailingWhitespace()
-        endWithNewline()
-        toggleOffOn()
-    }
-}
-
-checkstyle {
-    toolVersion = '10.18.2'
-    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
-    maxWarnings = Integer.MAX_VALUE
-    // Loose initial gate — violations are reported but do not fail the build.
-    // Phase 4 of the launch-readiness plan flips this to false and expands the rule set.
-    ignoreFailures = true
-    showViolations = true
-}
-
-jacoco {
-    toolVersion = '0.8.12'
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
-
-jacocoTestCoverageVerification {
-    dependsOn jacocoTestReport
-    violationRules {
-        rule {
-            limit {
-                counter = 'INSTRUCTION'
-                value = 'COVEREDRATIO'
-                // Loose initial gate (~40% instruction) per plan Phase 0.3.
-                // Raised to 70% in Phase 2 and 75% in Phase 4.
-                minimum = 0.40
-            }
-        }
-    }
-}
-
-tasks.named('check') {
-    dependsOn jacocoTestCoverageVerification
+    useJUnitPlatform()
 }

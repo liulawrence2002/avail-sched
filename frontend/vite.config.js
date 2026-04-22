@@ -1,24 +1,36 @@
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-
-const apiTarget = process.env.VITE_DEV_PROXY_TARGET || "http://localhost:8080";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
   server: {
+    port: 5173,
     proxy: {
-      "/api": apiTarget,
-      "/api-docs": apiTarget,
-      "/swagger-ui.html": apiTarget,
-      "/swagger-ui": apiTarget,
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api-docs': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/swagger-ui.html': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/swagger-ui': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
-  preview: {
-    proxy: {
-      "/api": apiTarget,
-      "/api-docs": apiTarget,
-      "/swagger-ui.html": apiTarget,
-      "/swagger-ui": apiTarget,
-    },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
   },
 });

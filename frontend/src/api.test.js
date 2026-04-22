@@ -1,131 +1,256 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  createEvent,
+  getEvent,
+  joinParticipant,
+  saveAvailability,
+  getPublicResults,
+  getHostResults,
+  finalizeEvent,
+  getFinalSelection,
+  getIcsUrl,
+} from './api.js';
 
-import { api } from "./api";
-
-function mockFetchJson(payload, init = {}) {
-  return vi.fn().mockResolvedValue({
-    ok: init.ok !== false,
-    status: init.status ?? 200,
-    headers: {
-      get: (name) =>
-        name.toLowerCase() === "content-type" ? "application/json" : null,
-    },
-    json: async () => payload,
-    text: async () => JSON.stringify(payload),
-  });
-}
-
-function mockFetchText(text, init = {}) {
-  return vi.fn().mockResolvedValue({
-    ok: init.ok !== false,
-    status: init.status ?? 200,
-    headers: {
-      get: () => "text/plain",
-    },
-    json: async () => {
-      throw new Error("not json");
-    },
-    text: async () => text,
-  });
-}
-
-describe("api helpers", () => {
-  const originalFetch = globalThis.fetch;
-
+describe('API wrapper', () => {
   beforeEach(() => {
-    globalThis.fetch = mockFetchJson({ ok: true });
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
   });
 
-  it("createEvent POSTs JSON to /events", async () => {
-    const payload = { title: "Demo", slotMinutes: 30 };
-    await api.createEvent(payload);
-    const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events");
-    expect(options.method).toBe("POST");
-    expect(options.body).toBe(JSON.stringify(payload));
-    expect(options.headers["Content-Type"]).toBe("application/json");
+  function mockResponse(response, options = {}) {
+    const { status = 200, headers = {} } = options;
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      statusText: status === 204 ? 'No Content' : 'OK',
+      headers: new Map(Object.entries(headers)),
+      json: () => Promise.resolve(response),
+      text: () => Promise.resolve(typeof response === 'string' ? response : JSON.stringify(response)),
+    };
+  }
+
+  // ─── createEvent ───────────────────────────────────────────────────────────
+
+  it('createEvent sends correct POST body and returns parsed response', async () => {
+    const eventData = {
+      title: 'Dragon Raid',
+      timezone: 'America/New_York',
+      slotMinutes: 30,
+      durationMinutes: 60,
+      startDate: '2024-08-01',
+      endDate: '2024-08-03',
+      dailyStartTime: '09:00',
+      dailyEndTime: '18:00',
+      resultsVisibility: 'aggregate_public',
+    };
+    const mockData = { publicId: 'abc123', hostToken: 'host_xyz' };
+    global.fetch.mockResolvedValue(
+      mockResponse(mockData, { headers: { 'content-type': 'application/json' } })
+    );
+
+    const result = await createEvent(eventData);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/events'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(eventData),
+      })
+    );
+    expect(result).toEqual({ ok: true, data: mockData, error: null });
   });
 
-  it("getEvent GETs /events/:publicId", async () => {
-    await api.getEvent("abc");
-    const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc");
-    expect(options.method).toBeUndefined();
+  // ─── getEvent ──────────────────────────────────────────────────────────────
+
+  it('getEvent calls correct URL', async () => {
+    const publicId = 'evt-123';
+    const mockData = { title: 'Test Event', candidateSlotsUtc: [] };
+    global.fetch.mockResolvedValue(
+      mockResponse(mockData, { headers: { 'content-type': 'application/json' } })
+    );
+
+    const result = await getEvent(publicId);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/events/${publicId}`),
+      expect.any(Object)
+    );
+    expect(result).toEqual({ ok: true, data: mockData, error: null });
   });
 
-  it("joinEvent POSTs to /events/:publicId/participants", async () => {
-    await api.joinEvent("abc", { displayName: "Alice", email: "alice@example.com" });
-    const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc/participants");
-    expect(options.method).toBe("POST");
-    expect(options.body).toContain("Alice");
+  // ─── joinParticipant ─────────────────────────────────────────────────────────
+
+  it('joinParticipant sends { displayName, email } and reads participantToken from response', async () => {
+    const publicId = 'evt-456';
+    const participantData = { displayName: 'Gandalf', email: 'gandalf@middleearth.com' };
+    const mockData = { participantToken: 'tok_abc123' };
+    global.fetch.mockResolvedValue(
+      mockResponse(mockData, { headers: { 'content-type': 'application/json' } })
+    );
+
+    const result = await joinParticipant(publicId, participantData);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/events/${publicId}/participants`),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ displayName: 'Gandalf', email: 'gandalf@middleearth.com' }),
+      })
+    );
+    expect(result).toEqual({ ok: true, data: mockData, error: null });
+    expect(result.data.participantToken).toBe('tok_abc123');
   });
 
-  it("getParticipantAvailability GETs the participant-scoped URL", async () => {
-    await api.getParticipantAvailability("abc", "tok");
-    const [url] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc/participants/tok/availability");
+  // ─── saveAvailability ────────────────────────────────────────────────────────
+
+  it('saveAvailability sends { items: [{ slotStartUtc, weight }] }', async () => {
+    const publicId = 'evt-789';
+    const token = 'tok_xyz';
+    const payload = {
+      items: [
+        { slotStartUtc: '2024-08-01T09:00:00Z', weight: 1.0 },
+        { slotStartUtc: '2024-08-01T10:00:00Z', weight: 0.6 },
+      ],
+    };
+    global.fetch.mockResolvedValue(
+      mockResponse({ saved: true }, { headers: { 'content-type': 'application/json' } })
+    );
+
+    const result = await saveAvailability(publicId, token, payload);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/events/${publicId}/participants/${token}/availability`),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      })
+    );
+    expect(result.ok).toBe(true);
   });
 
-  it("saveAvailability PUTs the availability payload", async () => {
-    const payload = { items: [{ slotStartUtc: "2026-04-01T09:00:00Z", weight: 1 }] };
-    await api.saveAvailability("abc", "tok", payload);
-    const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc/participants/tok/availability");
-    expect(options.method).toBe("PUT");
-    expect(JSON.parse(options.body)).toEqual(payload);
-  });
+  // ─── Error handling ──────────────────────────────────────────────────────────
 
-  it("getResults GETs /events/:publicId/results", async () => {
-    await api.getResults("abc");
-    expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/events/abc/results");
-  });
+  it('error handling returns { ok: false, error: { status, message } } for HTTP error', async () => {
+    const errorBody = { message: 'Event not found', error: 'NotFound' };
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Map([['content-type', 'application/json']]),
+      json: () => Promise.resolve(errorBody),
+      text: () => Promise.resolve(JSON.stringify(errorBody)),
+    });
 
-  it("getHostEvent GETs /host/:hostToken", async () => {
-    await api.getHostEvent("host-tok");
-    expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/host/host-tok");
-  });
+    const result = await getEvent('missing-id');
 
-  it("getHostResults GETs /host/:hostToken/results", async () => {
-    await api.getHostResults("host-tok");
-    expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/host/host-tok/results");
-  });
-
-  it("finalizeEvent POSTs with host token in the X-Host-Token header", async () => {
-    // Phase 1.2 moved the host token from the query string to the X-Host-Token header.
-    await api.finalizeEvent("abc", "host tok/+", { slotStartUtc: "2026-04-01T09:00:00Z" });
-    const [url, options] = globalThis.fetch.mock.calls[0];
-    expect(url).toBe("/api/events/abc/finalize");
-    expect(options.method).toBe("POST");
-    expect(options.headers["X-Host-Token"]).toBe("host tok/+");
-    expect(options.body).toBe(JSON.stringify({ slotStartUtc: "2026-04-01T09:00:00Z" }));
-  });
-
-  it("getFinal GETs /events/:publicId/final", async () => {
-    await api.getFinal("abc");
-    expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/events/abc/final");
-  });
-
-  it("icsUrl returns the .ics download URL", () => {
-    expect(api.icsUrl("abc")).toBe("/api/events/abc/final.ics");
-  });
-
-  it("throws an Error enriched with status and data on non-ok responses", async () => {
-    globalThis.fetch = mockFetchJson({ message: "nope" }, { ok: false, status: 400 });
-    await expect(api.getEvent("abc")).rejects.toMatchObject({
-      message: "nope",
-      status: 400,
-      data: { message: "nope" },
+    expect(result.ok).toBe(false);
+    expect(result.data).toBeNull();
+    expect(result.error).toMatchObject({
+      status: 404,
+      message: 'Event not found',
     });
   });
 
-  it("parses text responses when content-type is not JSON", async () => {
-    globalThis.fetch = mockFetchText("plain body");
-    const result = await api.getEvent("abc");
-    expect(result).toBe("plain body");
+  it('handles network errors with status 0', async () => {
+    global.fetch.mockRejectedValue(new Error('Failed to fetch'));
+
+    const result = await getEvent('any-id');
+
+    expect(result.ok).toBe(false);
+    expect(result.error.status).toBe(0);
+    expect(result.error.message).toContain('Failed to fetch');
+  });
+
+  // ─── 204 response handling ─────────────────────────────────────────────────
+
+  it('handles 204 No Content responses', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 204,
+      statusText: 'No Content',
+      headers: new Map(),
+      json: () => Promise.resolve(null),
+      text: () => Promise.resolve(''),
+    });
+
+    const result = await getPublicResults('evt-abc');
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toBeNull();
+    expect(result.error).toBeNull();
+  });
+
+  // ─── Additional functions smoke tests ──────────────────────────────────────
+
+  it('getPublicResults calls correct URL', async () => {
+    global.fetch.mockResolvedValue(
+      mockResponse({ topSlots: [] }, { headers: { 'content-type': 'application/json' } })
+    );
+
+    await getPublicResults('evt-abc');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/events/evt-abc/results'),
+      expect.any(Object)
+    );
+  });
+
+  it('getHostResults calls correct URL', async () => {
+    global.fetch.mockResolvedValue(
+      mockResponse({ topSlots: [] }, { headers: { 'content-type': 'application/json' } })
+    );
+
+    await getHostResults('host-tok');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/host/host-tok/results'),
+      expect.any(Object)
+    );
+  });
+
+  it('finalizeEvent sends correct headers and body', async () => {
+    global.fetch.mockResolvedValue(
+      mockResponse({ finalized: true }, { headers: { 'content-type': 'application/json' } })
+    );
+
+    await finalizeEvent('evt-abc', '2024-08-01T09:00:00Z', 'host-tok');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/events/evt-abc/finalize'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Host-Token': 'host-tok',
+        }),
+        body: JSON.stringify({ slotStartUtc: '2024-08-01T09:00:00Z' }),
+      })
+    );
+  });
+
+  it('getFinalSelection calls correct URL', async () => {
+    global.fetch.mockResolvedValue(
+      mockResponse({ slotStartUtc: '2024-08-01T09:00:00Z' }, { headers: { 'content-type': 'application/json' } })
+    );
+
+    await getFinalSelection('evt-abc');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/events/evt-abc/final'),
+      expect.any(Object)
+    );
+  });
+
+  it('getIcsUrl returns the ICS download URL string', () => {
+    const url = getIcsUrl('evt-abc');
+    expect(url).toContain('/events/evt-abc/final.ics');
   });
 });

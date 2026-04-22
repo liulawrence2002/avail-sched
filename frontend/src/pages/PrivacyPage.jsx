@@ -1,46 +1,69 @@
-import Card from "../components/Card";
-
-const PRIVACY_SECTIONS = [
-  {
-    title: "What we store",
-    body: "Event details, participant names, saved availability responses, and lightweight aggregate view and respondent counts are stored so the scheduling flow works.",
-  },
-  {
-    title: "What we do not require",
-    body: "This product does not require personal accounts to create or answer an event. Access is handled through private host and participant links.",
-  },
-  {
-    title: "How links work",
-    body: "Host links and participant tokens behave like bearer secrets. Anyone with the link can use it, so they should be shared carefully.",
-  },
-  {
-    title: "Analytics",
-    body: "The current product keeps only minimal product analytics hooks. If a production analytics provider is added later, this page should be updated to reflect that change.",
-  },
-  {
-    title: "Contact",
-    body: "If you plan to sell the product publicly, replace this page with your business contact details and any region-specific compliance language you need.",
-  },
-];
+import Card from '../components/Card';
 
 export default function PrivacyPage() {
   return (
-    <div className="space-y-6">
-      <Card variant="strong" className="space-y-4">
-        <span className="eyebrow">Privacy</span>
-        <h1 className="display-title display-title-lg">Privacy policy</h1>
-        <p className="section-kicker">
-          This project stores only the information needed to run shared scheduling pages and private host workflows.
-        </p>
-      </Card>
+    <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
+      <Card padding="xl" border="subtle" shadow="glass">
+        <h1 className="font-display text-3xl text-cream mb-6">Privacy Policy</h1>
+        <div className="space-y-6 text-silver leading-relaxed text-sm sm:text-base">
+          <p>
+            Goblin Scheduler is built on a simple principle: <strong className="text-cream">we collect as little data as possible</strong>.
+          </p>
 
-      <Card className="space-y-5 legal-prose">
-        {PRIVACY_SECTIONS.map((section) => (
-          <section key={section.title} className="space-y-2">
-            <h2>{section.title}</h2>
-            <p>{section.body}</p>
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">What We Collect</h2>
+            <ul className="space-y-2 list-disc list-inside">
+              <li>Event titles and descriptions (provided by you)</li>
+              <li>Proposed time slots (provided by you)</li>
+              <li>Participant display names (provided by participants)</li>
+              <li>Optional participant email addresses (only if provided)</li>
+              <li>Availability selections (yes/no per time slot)</li>
+            </ul>
           </section>
-        ))}
+
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">What We Do Not Collect</h2>
+            <ul className="space-y-2 list-disc list-inside">
+              <li>Account passwords (we don't have accounts)</li>
+              <li>IP addresses or location data</li>
+              <li>Analytics or tracking cookies</li>
+              <li>Third-party advertising identifiers</li>
+              <li>Social media profiles or contact lists</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">How We Use Your Data</h2>
+            <p>
+              Event data is used solely to operate the scheduling service. We do not sell, rent, or share your data with third parties for marketing or any other purpose.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">Data Retention</h2>
+            <p>
+              Events are automatically deleted after a period of inactivity (typically 90 days). You may also manually delete an event from the host workspace.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">Local Storage</h2>
+            <p>
+              We store participant tokens in your browser's localStorage so you can return and edit your availability without re-entering your name. This data never leaves your device.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl text-cream mb-3">Contact</h2>
+            <p>
+              Questions? The goblins are friendly. Reach out through the project repository or community channels.
+            </p>
+          </section>
+
+          <p className="text-xs text-silver-dim pt-4 border-t border-white/5">
+            Last updated: {new Date().toLocaleDateString()}
+          </p>
+        </div>
       </Card>
     </div>
   );
