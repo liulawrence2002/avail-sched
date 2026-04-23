@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import InsightsPanel from '../components/InsightsPanel';
 
 const HOST_TOKENS_KEY = 'goblin_host_tokens';
 
@@ -49,14 +50,17 @@ export default function DashboardPage() {
   const { showError } = useAppState();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hostTokensList, setHostTokensList] = useState([]);
 
   useEffect(() => {
     const tokens = readHostTokens();
+    const tokenList = tokens.map((t) => t.hostToken);
+    setHostTokensList(tokenList);
     if (tokens.length === 0) {
       setLoading(false);
       return;
     }
-    lookupEvents(tokens.map((t) => t.hostToken)).then((res) => {
+    lookupEvents(tokenList).then((res) => {
       setLoading(false);
       if (res.ok) {
         setEvents(res.data || []);
@@ -110,6 +114,9 @@ export default function DashboardPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
       <h1 className="font-display text-2xl sm:text-3xl text-cream mb-6">Your Events</h1>
+
+      {/* Insights */}
+      <InsightsPanel hostTokens={hostTokensList} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">

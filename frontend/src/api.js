@@ -307,3 +307,113 @@ export async function nudgeNonRespondents(publicId, hostToken) {
     headers: { 'X-Host-Token': hostToken },
   });
 }
+
+// ─── AI Features ────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/ai/status
+ * Check if AI features are available.
+ */
+export async function getAIStatus() {
+  return apiFetch('/ai/status');
+}
+
+/**
+ * POST /api/ai/parse-event
+ * Parse natural language event description into structured fields.
+ */
+export async function parseEventText(text) {
+  return apiFetch('/ai/parse-event', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+/**
+ * GET /api/host/{hostToken}/ai-suggestions
+ * Get AI-enhanced slot suggestions.
+ */
+export async function getAISuggestions(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/ai-suggestions`);
+}
+
+/**
+ * POST /api/insights
+ * Get dashboard insights for events.
+ */
+export async function getInsights(hostTokens) {
+  return apiFetch('/insights', {
+    method: 'POST',
+    body: JSON.stringify({ hostTokens }),
+  });
+}
+
+/**
+ * POST /api/host/{hostToken}/chat
+ * Send a chat message to the AI assistant.
+ */
+export async function sendChatMessage(hostToken, message) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/chat`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+/**
+ * GET /api/host/{hostToken}/chat
+ * Get chat history for an event.
+ */
+export async function getChatHistory(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/chat`);
+}
+
+/**
+ * POST /api/host/{hostToken}/generate-prep
+ * Generate meeting prep notes.
+ */
+export async function generatePrepNotes(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/generate-prep`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * POST /api/host/{hostToken}/generate-followup
+ * Generate a follow-up message draft.
+ */
+export async function generateFollowup(hostToken, variant) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/generate-followup`, {
+    method: 'POST',
+    body: JSON.stringify({ variant }),
+  });
+}
+
+/**
+ * GET /api/host/{hostToken}/agent-actions
+ * Get AI agent action log.
+ */
+export async function getAgentActions(hostToken) {
+  return apiFetch(`/host/${encodeURIComponent(hostToken)}/agent-actions`);
+}
+
+/**
+ * POST /api/ai/parse-recurrence
+ * Parse a natural language recurrence pattern into concrete dates.
+ */
+export async function parseRecurrence(text, timezone) {
+  return apiFetch('/ai/parse-recurrence', {
+    method: 'POST',
+    body: JSON.stringify({ text, timezone }),
+  });
+}
+
+/**
+ * POST /api/ai/create-series
+ * Create a series of linked events from parsed recurrence dates.
+ */
+export async function createEventSeries(eventData, dates) {
+  return apiFetch('/ai/create-series', {
+    method: 'POST',
+    body: JSON.stringify({ eventData, dates }),
+  });
+}

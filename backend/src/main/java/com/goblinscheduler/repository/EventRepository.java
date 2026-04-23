@@ -55,6 +55,10 @@ public class EventRepository {
         e.setAutoFinalize(rs.getBoolean("auto_finalize"));
         java.sql.Timestamp reminderSent = rs.getTimestamp("reminder_sent_at");
         e.setReminderSentAt(reminderSent != null ? reminderSent.toInstant() : null);
+        e.setAgentEnabled(rs.getBoolean("agent_enabled"));
+        e.setSeriesId(rs.getString("series_id"));
+        int seriesIdx = rs.getInt("series_index");
+        e.setSeriesIndex(rs.wasNull() ? null : seriesIdx);
         return e;
     };
 
@@ -62,8 +66,9 @@ public class EventRepository {
         String sql = """
             INSERT INTO events (public_id, host_token, title, description, timezone, slot_minutes,
                 duration_minutes, start_date, end_date, daily_start_time, daily_end_time,
-                location, meeting_url, results_visibility, view_count, respondent_count, final_slot_start, finalized_at, created_at, deadline, auto_finalize, reminder_sent_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                location, meeting_url, results_visibility, view_count, respondent_count, final_slot_start, finalized_at, created_at, deadline, auto_finalize, reminder_sent_at,
+                agent_enabled, series_id, series_index)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             """;
 
@@ -92,6 +97,13 @@ public class EventRepository {
             ps.setTimestamp(20, event.getDeadline() != null ? Timestamp.from(event.getDeadline()) : null);
             ps.setBoolean(21, event.isAutoFinalize());
             ps.setTimestamp(22, event.getReminderSentAt() != null ? Timestamp.from(event.getReminderSentAt()) : null);
+            ps.setBoolean(23, event.isAgentEnabled());
+            ps.setString(24, event.getSeriesId());
+            if (event.getSeriesIndex() != null) {
+                ps.setInt(25, event.getSeriesIndex());
+            } else {
+                ps.setNull(25, java.sql.Types.INTEGER);
+            }
             return ps;
         }, keyHolder);
 
@@ -139,7 +151,8 @@ public class EventRepository {
             UPDATE events SET title = ?, description = ?, timezone = ?, slot_minutes = ?,
                 duration_minutes = ?, start_date = ?, end_date = ?, daily_start_time = ?, daily_end_time = ?,
                 location = ?, meeting_url = ?, results_visibility = ?,
-                deadline = ?, auto_finalize = ?
+                deadline = ?, auto_finalize = ?,
+                agent_enabled = ?, series_id = ?, series_index = ?
             WHERE id = ? AND deleted_at IS NULL
             """;
         jdbcTemplate.update(sql,
@@ -157,6 +170,9 @@ public class EventRepository {
                 event.getResultsVisibility(),
                 event.getDeadline() != null ? Timestamp.from(event.getDeadline()) : null,
                 event.isAutoFinalize(),
+                event.isAgentEnabled(),
+                event.getSeriesId(),
+                event.getSeriesIndex(),
                 event.getId()
         );
     }
@@ -220,5 +236,20 @@ public class EventRepository {
     public void markReminderSent(Long eventId) {
         String sql = "UPDATE events SET reminder_sent_at = NOW() WHERE id = ?";
         jdbcTemplate.update(sql, eventId);
+    }
+
+    public List<Event> findAgentEnabledEvents() {
+        String sql = """
+            SELECT * FROM events
+            WHERE agent_enabled = TRUE
+              AND finalized_at IS NULL
+              AND deleted_at IS NULL
+            """;
+        return jdbcTemplate.query(sql, eventRowMapper);
+    }
+
+    public void updateAgentEnabled(Long eventId, boolean enabled) {
+        String sql = "UPDATE events SET agent_enabled = ? WHERE id = ?";
+        jdbcTemplate.update(sql, enabled, eventId);
     }
 }

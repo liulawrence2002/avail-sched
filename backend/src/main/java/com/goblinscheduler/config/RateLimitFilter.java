@@ -17,9 +17,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitFilter implements Filter {
 
     private static final int MAX_REQUESTS = 120;
+    private static final int MAX_AI_REQUESTS = 10;
     private static final long WINDOW_MS = 60_000; // 1 minute
+    private static final long AI_WINDOW_MS = 3_600_000; // 1 hour
 
     private final Map<String, RateLimitBucket> buckets = new ConcurrentHashMap<>();
+    private final Map<String, RateLimitBucket> aiBuckets = new ConcurrentHashMap<>();
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -29,8 +32,20 @@ public class RateLimitFilter implements Filter {
 
         String clientIp = getClientIp(httpRequest);
         String normalizedPath = normalizePath(httpRequest.getRequestURI());
-        String key = clientIp + ":" + normalizedPath;
 
+        // Stricter rate limit for AI endpoints
+        if (isAIEndpoint(httpRequest.getRequestURI())) {
+            String aiKey = clientIp + ":ai";
+            RateLimitBucket aiBucket = aiBuckets.computeIfAbsent(aiKey, k -> new RateLimitBucket(MAX_AI_REQUESTS, AI_WINDOW_MS));
+            if (!aiBucket.tryConsume()) {
+                httpResponse.setStatus(429);
+                httpResponse.setContentType("application/json");
+                httpResponse.getWriter().write("{\"message\":\"AI rate limit exceeded. Maximum 10 AI calls per hour.\"}");
+                return;
+            }
+        }
+
+        String key = clientIp + ":" + normalizedPath;
         RateLimitBucket bucket = buckets.computeIfAbsent(key, k -> new RateLimitBucket());
 
         if (bucket.tryConsume()) {
@@ -40,6 +55,12 @@ public class RateLimitFilter implements Filter {
             httpResponse.setContentType("application/json");
             httpResponse.getWriter().write("{\"message\":\"Rate limit exceeded\"}");
         }
+    }
+
+    private boolean isAIEndpoint(String uri) {
+        return uri.contains("/api/ai/") || uri.contains("/ai-suggestions")
+                || uri.contains("/chat") || uri.contains("/generate-prep")
+                || uri.contains("/generate-followup");
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -62,16 +83,27 @@ public class RateLimitFilter implements Filter {
     }
 
     private static class RateLimitBucket {
+        private final int maxRequests;
+        private final long windowMs;
         private long windowStart = System.currentTimeMillis();
         private int count = 0;
 
+        RateLimitBucket() {
+            this(MAX_REQUESTS, WINDOW_MS);
+        }
+
+        RateLimitBucket(int maxRequests, long windowMs) {
+            this.maxRequests = maxRequests;
+            this.windowMs = windowMs;
+        }
+
         synchronized boolean tryConsume() {
             long now = System.currentTimeMillis();
-            if (now - windowStart > WINDOW_MS) {
+            if (now - windowStart > windowMs) {
                 windowStart = now;
                 count = 0;
             }
-            if (count < MAX_REQUESTS) {
+            if (count < maxRequests) {
                 count++;
                 return true;
             }

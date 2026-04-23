@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createEvent, listTemplates, createTemplate, deleteTemplate } from '../api.js';
+import { createEvent, listTemplates, createTemplate, deleteTemplate, getAIStatus, parseRecurrence, createEventSeries } from '../api.js';
 import { saveHostToken } from './DashboardPage.jsx';
 import { useAppState } from '../hooks/useAppState';
 import Button from '../components/Button';
@@ -8,6 +8,7 @@ import Input from '../components/Input';
 import Card from '../components/Card';
 import ErrorMessage from '../components/ErrorMessage';
 import LoadingState from '../components/LoadingState';
+import NLParseBanner from '../components/NLParseBanner';
 
 /**
  * Create Event flow.
@@ -40,7 +41,22 @@ export default function CreateEventPage() {
   const [deadline, setDeadline] = useState('');
   const [autoFinalize, setAutoFinalize] = useState(false);
 
+  const [agentEnabled, setAgentEnabled] = useState(false);
+
+  // Recurrence
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
+  const [recurrenceText, setRecurrenceText] = useState('');
+  const [recurrenceDates, setRecurrenceDates] = useState([]);
+  const [parsingRecurrence, setParsingRecurrence] = useState(false);
+
   const [scheduleErrors, setScheduleErrors] = useState({});
+
+  // AI status
+  const [aiAvailable, setAiAvailable] = useState(null);
+
+  useEffect(() => {
+    getAIStatus().then(r => { if (r.ok) setAiAvailable(r.data?.available); });
+  }, []);
 
   // Templates
   const [templates, setTemplates] = useState([]);
@@ -120,13 +136,36 @@ export default function CreateEventPage() {
     return Object.keys(errors).length === 0;
   };
 
+  const handleNLParsed = (parsed) => {
+    if (parsed.title) setTitle(parsed.title);
+    if (parsed.description) setDescription(parsed.description);
+    if (parsed.startDate) setStartDate(parsed.startDate);
+    if (parsed.endDate) setEndDate(parsed.endDate);
+    if (parsed.dailyStartTime) setDailyStartTime(parsed.dailyStartTime);
+    if (parsed.dailyEndTime) setDailyEndTime(parsed.dailyEndTime);
+    if (parsed.slotMinutes) setSlotMinutes(Number(parsed.slotMinutes));
+    if (parsed.durationMinutes) setDurationMinutes(Number(parsed.durationMinutes));
+    if (parsed.location) setLocation(parsed.location);
+    if (parsed.meetingUrl) setMeetingUrl(parsed.meetingUrl);
+  };
+
+  const handleParseRecurrence = async () => {
+    if (!recurrenceText.trim()) return;
+    setParsingRecurrence(true);
+    const res = await parseRecurrence(recurrenceText.trim(), timezone);
+    setParsingRecurrence(false);
+    if (res.ok && res.data?.dates) {
+      setRecurrenceDates(res.data.dates);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateStep1() || !validateSchedule()) return;
 
     setLoading(true);
     setApiError(null);
 
-    const result = await createEvent({
+    const eventData = {
       title: title.trim(),
       description: description.trim() || undefined,
       timezone,
@@ -141,7 +180,27 @@ export default function CreateEventPage() {
       resultsVisibility,
       deadline: deadline ? new Date(deadline).toISOString() : undefined,
       autoFinalize: autoFinalize || undefined,
-    });
+      agentEnabled: agentEnabled || undefined,
+    };
+
+    // Handle recurrence series
+    if (recurrenceEnabled && recurrenceDates.length > 0) {
+      const seriesResult = await createEventSeries(eventData, recurrenceDates);
+      setLoading(false);
+      if (!seriesResult.ok) {
+        setApiError(seriesResult.error?.message || 'Failed to create event series');
+        showError(seriesResult.error?.message || 'Failed to create event series');
+        return;
+      }
+      const events = seriesResult.data;
+      if (events.length > 0) {
+        events.forEach(e => saveHostToken(e.hostToken, `${title.trim()} (series)`));
+        navigate(`/host/${events[0].hostToken}`);
+      }
+      return;
+    }
+
+    const result = await createEvent(eventData);
 
     setLoading(false);
 
@@ -177,6 +236,8 @@ export default function CreateEventPage() {
 
         {step === 1 && (
           <div className="space-y-6">
+            <NLParseBanner onParsed={handleNLParsed} aiAvailable={aiAvailable} />
+
             <div>
               <h2 className="font-display text-2xl sm:text-3xl text-cream mb-2">What's the occasion?</h2>
               <p className="text-silver text-sm">Give your event a name. You can add details too.</p>
@@ -437,6 +498,67 @@ export default function CreateEventPage() {
                 </label>
               </div>
             </div>
+
+            {/* AI Agent toggle */}
+            {aiAvailable && (
+              <div className="flex items-center">
+                <label className="flex items-center gap-2 px-4 py-3 rounded-xl bg-charcoal/40 border border-white/5 cursor-pointer hover:border-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={agentEnabled}
+                    onChange={(e) => setAgentEnabled(e.target.checked)}
+                    className="accent-gold"
+                  />
+                  <span className="text-sm text-cream">Enable AI Agent</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-gold/15 text-gold uppercase tracking-widest border border-gold/20">AI</span>
+                </label>
+              </div>
+            )}
+
+            {/* Recurrence */}
+            {aiAvailable && (
+              <div className="bg-charcoal/30 border border-white/5 rounded-xl p-4">
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={recurrenceEnabled}
+                    onChange={(e) => setRecurrenceEnabled(e.target.checked)}
+                    className="accent-gold"
+                  />
+                  <span className="text-sm font-medium text-cream-muted">Recurring event?</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-gold/15 text-gold uppercase tracking-widest border border-gold/20">AI</span>
+                </label>
+                {recurrenceEnabled && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={recurrenceText}
+                        onChange={(e) => setRecurrenceText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleParseRecurrence(); }}
+                        placeholder='e.g., "Every other Friday at 3pm for 6 weeks"'
+                        className="flex-1 px-4 py-2 rounded-lg bg-charcoal/60 border border-white/10 text-cream text-sm placeholder-silver-dim/60 focus:outline-none focus:border-gold/50"
+                      />
+                      <Button variant="goldGhost" size="sm" onClick={handleParseRecurrence} loading={parsingRecurrence} disabled={!recurrenceText.trim()}>
+                        Parse
+                      </Button>
+                    </div>
+                    {recurrenceDates.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-silver-dim">{recurrenceDates.length} occurrences:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {recurrenceDates.map((d, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded text-xs bg-gold/10 text-gold border border-gold/15">
+                              {d.startDate}{d.endDate && d.endDate !== d.startDate ? ` → ${d.endDate}` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {apiError && <ErrorMessage message={apiError} onRetry={handleSubmit} />}
 

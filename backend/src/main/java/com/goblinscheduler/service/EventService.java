@@ -17,6 +17,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -69,6 +70,7 @@ public class EventService {
             event.setDeadline(Instant.parse(request.deadline()));
         }
         event.setAutoFinalize(request.autoFinalize() != null ? request.autoFinalize() : false);
+        event.setAgentEnabled(request.agentEnabled() != null ? request.agentEnabled() : false);
 
         eventRepository.save(event);
 
@@ -242,7 +244,7 @@ public class EventService {
                 request.startDate(), request.endDate(),
                 request.dailyStartTime(), request.dailyEndTime(),
                 request.location(), request.meetingUrl(), request.resultsVisibility(),
-                null, null
+                null, null, null
         ));
 
         event.setTitle(request.title().trim());
@@ -287,6 +289,40 @@ public class EventService {
                         e.getDeadline() != null ? e.getDeadline().toString() : null
                 ))
                 .toList();
+    }
+
+    @Transactional
+    public List<CreateEventResponse> createEventSeries(CreateEventRequest baseRequest,
+                                                         List<Map<String, String>> dates) {
+        String seriesId = TokenGenerator.generatePublicId();
+        List<CreateEventResponse> responses = new java.util.ArrayList<>();
+
+        for (int i = 0; i < dates.size(); i++) {
+            Map<String, String> date = dates.get(i);
+            String startDate = date.get("startDate");
+            String endDate = date.getOrDefault("endDate", startDate);
+            String seriesTitle = String.format("%s (#%d)", baseRequest.title(), i + 1);
+
+            CreateEventRequest req = new CreateEventRequest(
+                    seriesTitle, baseRequest.description(), baseRequest.timezone(),
+                    baseRequest.slotMinutes(), baseRequest.durationMinutes(),
+                    startDate, endDate,
+                    baseRequest.dailyStartTime(), baseRequest.dailyEndTime(),
+                    baseRequest.location(), baseRequest.meetingUrl(), baseRequest.resultsVisibility(),
+                    baseRequest.deadline(), baseRequest.autoFinalize(), baseRequest.agentEnabled()
+            );
+
+            CreateEventResponse response = createEvent(req);
+            // Update series fields
+            Event event = eventRepository.findByPublicId(response.publicId())
+                    .orElseThrow(() -> new NotFoundException("Event not found"));
+            event.setSeriesId(seriesId);
+            event.setSeriesIndex(i);
+            eventRepository.updateEvent(event);
+
+            responses.add(response);
+        }
+        return responses;
     }
 
     private void validateCreateRequest(CreateEventRequest request) {

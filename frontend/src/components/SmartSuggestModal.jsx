@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getSuggestions } from '../api';
+import { getSuggestions, getAISuggestions } from '../api';
 import Button from './Button';
 
 function formatSlotLocal(isoString, timezone) {
@@ -22,17 +22,31 @@ export default function SmartSuggestModal({ hostToken, timezone, onClose, onPick
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [aiEnhanced, setAiEnhanced] = useState(false);
+  const [aiToggle, setAiToggle] = useState(false);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const res = await getSuggestions(hostToken);
-        if (res.ok) {
-          setSuggestions(res.data);
-          setError(null);
+        if (aiToggle) {
+          const res = await getAISuggestions(hostToken);
+          if (res.ok) {
+            setSuggestions(res.data.suggestions || []);
+            setAiEnhanced(res.data.aiEnhanced || false);
+            setError(null);
+          } else {
+            setError('Failed to load AI suggestions');
+          }
         } else {
-          setError('Failed to load suggestions');
+          const res = await getSuggestions(hostToken);
+          if (res.ok) {
+            setSuggestions(res.data);
+            setAiEnhanced(false);
+            setError(null);
+          } else {
+            setError('Failed to load suggestions');
+          }
         }
       } catch (e) {
         setError('Failed to load suggestions');
@@ -41,14 +55,32 @@ export default function SmartSuggestModal({ hostToken, timezone, onClose, onPick
       }
     }
     load();
-  }, [hostToken]);
+  }, [hostToken, aiToggle]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-[#141416] border border-gold-500/20 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-playfair font-bold text-gold-400">✨ Smart Suggest</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-playfair font-bold text-gold-400">✨ Smart Suggest</h3>
+            {aiEnhanced && (
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-gold/15 text-gold uppercase tracking-widest border border-gold/20">AI</span>
+            )}
+          </div>
           <button onClick={onClose} className="text-ink-400 hover:text-cream transition-colors">✕</button>
+        </div>
+
+        {/* AI Enhance toggle */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={aiToggle}
+              onChange={(e) => setAiToggle(e.target.checked)}
+              className="accent-gold"
+            />
+            <span className="text-sm text-cream-muted">Enhance with AI</span>
+          </label>
         </div>
 
         {loading ? (

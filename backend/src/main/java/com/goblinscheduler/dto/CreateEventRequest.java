@@ -43,5 +43,7 @@ public record CreateEventRequest(
 
     String deadline,
 
-    Boolean autoFinalize
+    Boolean autoFinalize,
+
+    Boolean agentEnabled
 ) {}

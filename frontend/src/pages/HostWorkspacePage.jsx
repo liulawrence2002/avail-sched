@@ -12,6 +12,9 @@ import {
   getGoogleAuthUrl,
   addEventToCalendar,
   nudgeNonRespondents,
+  generatePrepNotes,
+  getAgentActions,
+  getAIStatus,
 } from '../api.js';
 import { useLocalStorage } from '../hooks';
 import { useAppState } from '../hooks/useAppState';
@@ -22,6 +25,8 @@ import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import EventCommentsPanel from '../components/EventCommentsPanel';
 import SmartSuggestModal from '../components/SmartSuggestModal';
+import AIChatPanel from '../components/AIChatPanel';
+import FollowupDraftModal from '../components/FollowupDraftModal';
 
 function formatSlotLocal(isoString, timezone) {
   const d = new Date(isoString);
@@ -70,6 +75,12 @@ export default function HostWorkspacePage() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [showFollowup, setShowFollowup] = useState(false);
+  const [generatingPrep, setGeneratingPrep] = useState(false);
+  const [agentActions, setAgentActions] = useState([]);
+  const [showAgentLog, setShowAgentLog] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -85,11 +96,13 @@ export default function HostWorkspacePage() {
 
     setResults(resultsRes.data);
 
-    // Fetch event details for title
+    // Fetch event details, notes, AI status, agent actions
     if (resultsRes.data?.publicId) {
-      const [eventRes, notesRes] = await Promise.all([
+      const [eventRes, notesRes, aiStatusRes, agentRes] = await Promise.all([
         getEvent(resultsRes.data.publicId),
         getEventNotes(resultsRes.data.publicId),
+        getAIStatus(),
+        getAgentActions(hostToken),
       ]);
       if (eventRes.ok) {
         setEvent(eventRes.data);
@@ -100,6 +113,12 @@ export default function HostWorkspacePage() {
       } else {
         setNotes(null);
         setNotesDraft('');
+      }
+      if (aiStatusRes.ok) {
+        setAiAvailable(aiStatusRes.data?.available || false);
+      }
+      if (agentRes.ok) {
+        setAgentActions(agentRes.data || []);
       }
     }
 
@@ -342,6 +361,31 @@ export default function HostWorkspacePage() {
                 >
                   🗓️ Open in Google Calendar
                 </a>
+              )}
+              {aiAvailable && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={generatingPrep}
+                  onClick={async () => {
+                    setGeneratingPrep(true);
+                    const res = await generatePrepNotes(hostToken);
+                    setGeneratingPrep(false);
+                    if (res.ok && res.data?.content) {
+                      setNotesDraft(res.data.content);
+                      setNotesOpen(true);
+                    } else {
+                      showError('Failed to generate prep notes');
+                    }
+                  }}
+                >
+                  Generate Prep Notes
+                </Button>
+              )}
+              {aiAvailable && (
+                <Button variant="ghost" size="sm" onClick={() => setShowFollowup(true)}>
+                  Draft Follow-up
+                </Button>
               )}
             </div>
           </div>
@@ -615,6 +659,38 @@ export default function HostWorkspacePage() {
         />
       )}
 
+      {/* Agent Activity Log */}
+      {agentActions.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowAgentLog(o => !o)}
+            className="flex items-center gap-2 text-sm font-medium text-gold hover:text-gold-bright transition-colors mb-2"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showAgentLog ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            AI Agent Activity ({agentActions.length})
+          </button>
+          {showAgentLog && (
+            <div className="space-y-2">
+              {agentActions.map((action) => (
+                <Card key={action.id} padding="sm" border="subtle" className="bg-charcoal/20">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-cream">
+                      {action.actionType?.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-[10px] text-silver-dim">
+                      {new Date(action.createdAt).toLocaleDateString()} {new Date(action.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  {action.result && <p className="text-xs text-silver">{action.result}</p>}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Footer actions */}
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(`/e/${publicId}`)}>
@@ -627,6 +703,27 @@ export default function HostWorkspacePage() {
           🔄 Refresh
         </Button>
       </div>
+
+      {/* AI Chat button */}
+      {aiAvailable && (
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gold text-void shadow-lg hover:bg-gold-bright transition-colors flex items-center justify-center text-xl"
+          title="AI Assistant"
+        >
+          🤖
+        </button>
+      )}
+
+      {/* AI Chat Panel */}
+      {showChat && (
+        <AIChatPanel hostToken={hostToken} onClose={() => setShowChat(false)} />
+      )}
+
+      {/* Follow-up Draft Modal */}
+      {showFollowup && (
+        <FollowupDraftModal hostToken={hostToken} onClose={() => setShowFollowup(false)} />
+      )}
     </div>
   );
 }

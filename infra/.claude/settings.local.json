@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://www.google.com/search?q=agentic+AI+scheduling+apps+2025+2026+features+Reclaim+Motion+Clockwise\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -s \"https://www.google.com/search?q=LLM+powered+features+SaaS+productivity+apps+2025+natural+language+scheduling\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -s \"https://www.google.com/search?q=agentic+scheduling+autonomous+agents+calendar+meetings+2025\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(npx vite:*)",
+      "Bash(./gradlew compileJava)",
+      "Bash(npm run:*)",
+      "Bash(cmd.exe /c \"start /b cmd /c npm run dev > NUL 2>&1\")",
+      "Bash(docker compose:*)"
+    ]
+  }
+}

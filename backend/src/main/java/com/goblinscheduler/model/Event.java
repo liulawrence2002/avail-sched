@@ -27,6 +27,9 @@ public class Event {
     private Instant deadline;
     private boolean autoFinalize;
     private Instant reminderSentAt;
+    private boolean agentEnabled;
+    private String seriesId;
+    private Integer seriesIndex;
 
     public Event() {}
 
@@ -109,4 +112,13 @@ public class Event {
 
     public Instant getReminderSentAt() { return reminderSentAt; }
     public void setReminderSentAt(Instant reminderSentAt) { this.reminderSentAt = reminderSentAt; }
+
+    public boolean isAgentEnabled() { return agentEnabled; }
+    public void setAgentEnabled(boolean agentEnabled) { this.agentEnabled = agentEnabled; }
+
+    public String getSeriesId() { return seriesId; }
+    public void setSeriesId(String seriesId) { this.seriesId = seriesId; }
+
+    public Integer getSeriesIndex() { return seriesIndex; }
+    public void setSeriesIndex(Integer seriesIndex) { this.seriesIndex = seriesIndex; }
 }

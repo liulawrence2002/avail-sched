@@ -39,3 +39,9 @@ goblin:
     enabled: true
     retention-days: 30
     stale-days: 90
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.0-flash}
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+  max-tokens: ${GEMINI_MAX_TOKENS:1024}
